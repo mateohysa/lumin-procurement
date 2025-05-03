@@ -1,7 +1,7 @@
 import { Router, Request, Response, json } from "express";
-import { insertUser } from "../services/user.service";
+import { insertUser } from "../services/userService";
 import bcrypt from 'bcryptjs';
-import { UserDtos} from "../models/userModel";
+import { UserRegisterDto} from "../models/userModel";
 import { checkNotAuthenticated } from "../middleware/checkAuth";
 
 // :/register
@@ -10,7 +10,7 @@ const route = Router();;
 route.use(json());
 route.use(checkNotAuthenticated);  //this will probably work before every request, I think
 
-type RegisterPostRequest = Request<{}, {}, UserDtos> //we've written the req.body composition
+type RegisterPostRequest = Request<{}, {}, UserRegisterDto> //we've written the req.body composition
 
 route.post('/', async (req: RegisterPostRequest, res: Response) => {
   //due to the urlencoded middleware, we can immediately use req.body.<insert name of input here>

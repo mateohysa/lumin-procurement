@@ -11,6 +11,7 @@ import { authenticateJWT, isVendor, isEvaluator, isProcurementManager } from './
 // Routes
 import loginRoute from './routes/login';
 import registerRoute from './routes/register';
+import tendersRoute from './routes/tenders.js';
 
 // Connect to MongoDB
 connectDB();
@@ -27,6 +28,7 @@ app.use(cors({
 // API Routes
 app.use('/api/login', loginRoute);
 app.use('/api/register', registerRoute);
+app.use('/api/tenders', tendersRoute);
 
 // Protected routes
 app.get('/api/profile', authenticateJWT, (req, res) => {

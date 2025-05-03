@@ -31,6 +31,8 @@ import {
   CardHeader,
   CardTitle 
 } from '@/components/ui/card';
+import { tenderApi } from '@/lib/api-client';
+import { useNavigate } from 'react-router-dom';
 
 // Tender categories for select dropdown
 const tenderCategories = [
@@ -141,6 +143,9 @@ const CreateTender = () => {
   const [presetCriteria, setPresetCriteria] = useState(evaluationCriteriaTemplates);
   const [editingCriteriaId, setEditingCriteriaId] = useState<string | null>(null);
   const [editingWeight, setEditingWeight] = useState<number | ''>('');
+  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
   const totalSteps = 5;
   
   // Steps and their icons
@@ -173,19 +178,51 @@ const CreateTender = () => {
   const selectedCategory = watch('category');
 
   // Handle form submission
-  const onSubmit = (data: TenderFormValues) => {
+  const onSubmit = async (data: TenderFormValues) => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Here you would typically send the data to your backend API
-      console.log('Form submitted:', data);
-      
-      // Show success toast
-      toast({
-        title: 'Success!',
-        description: 'Tender has been created successfully.',
-        variant: 'default',
-      });
+      // Format the data for the API
+      const formattedData = {
+        title: data.title,
+        description: data.description,
+        category: data.category === 'other' ? data.customCategory : data.category,
+        budget: parseFloat(data.budget),
+        deadline: data.submissionDeadline,
+        status: 'draft', // Start as draft
+        evaluationCriteria: usePresetCriteria ? 
+          evaluationCriteriaTemplates : 
+          customCriteria.map(c => ({ name: c.name, weight: c.weight })),
+        assignedEvaluators: data.selectedEvaluators,
+        // Add any other necessary fields from the form
+      };
+
+      try {
+        setIsSubmitting(true);
+        // Send the data to the backend API
+        const response = await tenderApi.createTender(formattedData);
+        
+        // Show success toast
+        toast({
+          title: 'Success!',
+          description: 'Tender has been created successfully.',
+          variant: 'default',
+        });
+
+        // Redirect to the tender detail page or tenders list
+        navigate(`/tenders/${response.data._id}`);
+      } catch (error) {
+        console.error('Error creating tender:', error);
+        
+        // Show error toast
+        toast({
+          title: 'Error',
+          description: 'Failed to create tender. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -666,22 +703,23 @@ const CreateTender = () => {
                     type="button"
                     variant="outline"
                     onClick={previousStep}
+                    disabled={isSubmitting}
                   >
                     Previous
                   </Button>
                 ) : (
-                  <Button type="button" variant="outline">
+                  <Button type="button" variant="outline" disabled={isSubmitting}>
                     Save Draft
                   </Button>
                 )}
                 
                 {currentStep < totalSteps ? (
-                  <Button type="submit">
+                  <Button type="submit" disabled={isSubmitting}>
                     Continue
                   </Button>
                 ) : (
-                  <Button type="submit">
-                    Create Tender
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creating...' : 'Create Tender'}
                   </Button>
                 )}
               </div>
