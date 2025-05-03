@@ -42,4 +42,42 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Tender API functions
+export const tenderApi = {
+  // Create a new tender
+  createTender: async (tenderData) => {
+    return apiClient.post('/tenders', tenderData);
+  },
+  
+  // Get all tenders with optional filtering
+  getTenders: async (filters = {}) => {
+    return apiClient.get('/tenders', { params: filters });
+  },
+  
+  // Get a single tender by ID
+  getTenderById: async (id) => {
+    return apiClient.get(`/tenders/${id}`);
+  },
+  
+  // Update a tender
+  updateTender: async (id, updateData) => {
+    return apiClient.put(`/tenders/${id}`, updateData);
+  },
+  
+  // Delete a tender
+  deleteTender: async (id) => {
+    return apiClient.delete(`/tenders/${id}`);
+  },
+  
+  // Get tenders awaiting evaluation by specific evaluator
+  getEvaluationTenders: async () => {
+    return apiClient.get('/tenders/for-evaluation');
+  },
+  
+  // Get open tenders that vendors can apply to
+  getOpenTenders: async () => {
+    return apiClient.get('/tenders/open');
+  }
+};
+
 export default apiClient;

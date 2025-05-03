@@ -1,8 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 
-// Add this export to make checkAuth available
-export const checkAuth = checkAuthenticated;
-
 export function checkAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated())
     return next();

@@ -10,50 +10,16 @@ export interface TenderQueryOptions {
 }
 
 /**
- * Create a new tender with validation
+ * Create a new tender
  */
-export async function createTender(tenderData: Partial<ITender>): Promise<{ tender: ITender | null; error?: string }> {
+export async function createTender(tenderData: Partial<ITender>): Promise<ITender | null> {
   try {
-    // Basic validation
-    if (!tenderData.title) {
-      return { tender: null, error: 'Title is required' };
-    }
-    if (!tenderData.description) {
-      return { tender: null, error: 'Description is required' };
-    }
-    if (!tenderData.category) {
-      return { tender: null, error: 'Category is required' };
-    }
-    if (!tenderData.budget || tenderData.budget <= 0) {
-      return { tender: null, error: 'Valid budget amount is required' };
-    }
-    if (!tenderData.deadline) {
-      return { tender: null, error: 'Deadline is required' };
-    }
-    
-    // Ensure deadline is in the future
-    const now = new Date();
-    const deadlineDate = new Date(tenderData.deadline);
-    if (deadlineDate <= now) {
-      return { tender: null, error: 'Deadline must be in the future' };
-    }
-    
-    // Set default values if not provided
-    const tenderWithDefaults = {
-      ...tenderData,
-      status: tenderData.status || 'draft',
-      disputeTimeFrame: tenderData.disputeTimeFrame || 7
-    };
-    
-    const tender = new Tender(tenderWithDefaults);
+    const tender = new Tender(tenderData);
     const savedTender = await tender.save();
-    return { tender: savedTender };
+    return savedTender;
   } catch (error) {
     console.error('Error creating tender:', error);
-    return { 
-      tender: null, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred while creating tender' 
-    };
+    return null;
   }
 }
 
@@ -170,98 +136,6 @@ export async function findOpenTenders(): Promise<ITender[]> {
     return tenders;
   } catch (error) {
     console.error('Error finding open tenders:', error);
-    return [];
-  }
-}
-
-/**
- * Find tenders that are ending soon (within the next N days)
- */
-export async function findTendersEndingSoon(days: number = 7): Promise<ITender[]> {
-  try {
-    const now = new Date();
-    const endDate = new Date();
-    endDate.setDate(now.getDate() + days);
-    
-    const tenders = await Tender.find({
-      status: 'open',
-      deadline: { $gt: now, $lt: endDate }
-    }).sort({ deadline: 1 });
-    
-    return tenders;
-  } catch (error) {
-    console.error('Error finding tenders ending soon:', error);
-    return [];
-  }
-}
-
-/**
- * Find tenders created by a specific user
- */
-export async function findTendersByUser(userId: string): Promise<ITender[]> {
-  try {
-    const tenders = await Tender.find({
-      createdBy: new mongoose.Types.ObjectId(userId)
-    }).sort({ createdAt: -1 });
-    
-    return tenders;
-  } catch (error) {
-    console.error(`Error finding tenders for user ${userId}:`, error);
-    return [];
-  }
-}
-
-/**
- * Find tenders by category
- */
-export async function findTendersByCategory(category: string): Promise<ITender[]> {
-  try {
-    const tenders = await Tender.find({
-      category: category
-    }).sort({ createdAt: -1 });
-    
-    return tenders;
-  } catch (error) {
-    console.error(`Error finding tenders for category ${category}:`, error);
-    return [];
-  }
-}
-
-/**
- * Count tenders by status
- * Returns an object with counts for each status
- */
-export async function countTendersByStatus(): Promise<Record<string, number>> {
-  try {
-    const result = await Tender.aggregate([
-      { $group: { _id: "$status", count: { $sum: 1 } } }
-    ]);
-    
-    const counts: Record<string, number> = {};
-    result.forEach(item => {
-      counts[item._id] = item.count;
-    });
-    
-    return counts;
-  } catch (error) {
-    console.error('Error counting tenders by status:', error);
-    return {};
-  }
-}
-
-/**
- * Get recent activity on tenders
- * Returns recently created or updated tenders
- */
-export async function getRecentTenderActivity(limit: number = 10): Promise<ITender[]> {
-  try {
-    const tenders = await Tender.find({})
-      .sort({ updatedAt: -1 })
-      .limit(limit);
-    
-    return tenders;
-  } catch (error) {
-    console.error('Error getting recent tender activity:', error);
     return [];
   }
 }
