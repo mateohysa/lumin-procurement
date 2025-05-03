@@ -1,0 +1,37 @@
+@Auth_HostAddress = http://localhost:3000
+
+POST {{Auth_HostAddress}}/register
+Content-Type: application/json
+
+{
+    "username" : "Gleos Cura",
+    "password" : "Xhlus"
+}
+###
+POST {{Auth_HostAddress}}/register
+Content-Type: application/json
+
+{
+    "username" : "ermiralliu",
+    "password" : "mirihahaha",
+    "role" : "ProcurementManager"
+}
+###
+POST {{Auth_HostAddress}}/login
+Content-Type: application/json
+
+{
+    "username" : "ermiralliu",
+    "password" : "mirihahaha"
+}
+###
+POST {{Auth_HostAddress}}/login
+Content-Type: application/json
+
+{
+    "username" : "Gleos Cura",
+    "password" : "Xhlus"
+}
+###
+GET {{Auth_HostAddress}}/
+Accept: application/json

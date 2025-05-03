@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "outDir": "build",
+    "incremental": true,                              /* Save .tsbuildinfo files to allow for incremental compilation of projects. */
+    
+    /* Language and Environment */
+    "target": "es2022",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible 
+    /* Modules */
+    "module": "NodeNext",                                /* Specify what module code is generated. */
+    // "rootDir": "./",                                  /* Specify the root folder within your source files. */
+    "moduleResolution": "NodeNext",                     /* Specify how TypeScript looks up a file from a given module specifier. */
+    // "noEmit": true,                                   /* Disable emitting files from a compilation. */
+    
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,            /* Ensure that casing is correct in imports. */
+    /* Type Checking */
+    "strict": true,                                      /* Enable all strict type-checking options. */
+    "removeComments": true
+  }
+}
