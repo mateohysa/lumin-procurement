@@ -1,2 +1,7 @@
 client/.env
 server/.env
+
+client/pnpm-lock.yaml
+client/node_modules
+server/pnpm-lock.yaml
+server/node_modules

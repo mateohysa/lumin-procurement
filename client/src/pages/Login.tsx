@@ -1,28 +1,25 @@
 
-import React from "react";
-import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import LoginForm from "../components/auth/LoginForm";
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { LoginForm } from '@/components/auth/LoginForm';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
-  const { isAuthenticated } = useAuth();
-
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+  const { isAuthenticated, user } = useAuth();
+  
+  // If already logged in, redirect to appropriate page
+  if (isAuthenticated && user) {
+    return <Navigate to="/" />;
   }
-
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute top-6 left-6">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary h-8 w-8 rounded-md flex items-center justify-center">
-            <span className="text-primary-foreground font-bold">A</span>
-          </div>
-          <div className="font-bold text-foreground text-xl">AADF</div>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-md space-y-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold">Smart Procurement</h1>
+          <p className="text-slate-500 mt-2">Login to manage procurement activities</p>
         </div>
-      </div>
-      
-      <div className="w-full max-w-md">
+        
         <LoginForm />
       </div>
     </div>

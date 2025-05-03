@@ -1,731 +1,288 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { Tender, Document, Question, TenderStatus } from "../types";
-import { api } from "../services/api";
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Card, CardContent } from "../components/ui/card";
-import {
-  FileText,
-  Calendar,
-  Bookmark,
-  Tag,
-  DollarSign,
-  Clock,
+import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { MainLayout } from '@/components/layout/MainLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Download, 
+  FileText, 
+  Calendar, 
+  DollarSign, 
+  Building,
   Users,
-  MessageSquare,
-  ClipboardCheck,
-  FilePlus,
-  ArrowLeft,
-  Loader2,
-  Award,
-  Pencil
-} from "lucide-react";
-import { format, isAfter } from "date-fns";
+  CheckCircle,
+  ExternalLink,
+  Flag
+} from 'lucide-react';
+import { RoleBasedSubmissionAccess } from '@/components/tenders/RoleBasedSubmissionAccess';
+import { useAuth } from '@/contexts/AuthContext';
+import { DisputeButton } from '@/components/disputes/DisputeButton';
 
-const getStatusBadgeVariant = (status: TenderStatus) => {
-  switch (status) {
-    case "draft":
-      return "outline";
-    case "published":
-      return "secondary";
-    case "evaluating":
-      return "default";
-    case "awarded":
-      return "default"; // Changed from "success" to "default"
-    case "canceled":
-      return "destructive";
-    case "archived":
-      return "outline";
-    default:
-      return "outline";
-  }
+// Mock tender data
+const tenderData = {
+  id: '123',
+  title: 'Office Equipment Procurement',
+  description: 'Seeking a vendor to supply office equipment including computers, printers, and furniture.',
+  category: 'Equipment',
+  status: 'Awarded',
+  deadline: '2025-04-30',
+  endDate: '2025-05-01',
+  budget: '$50,000',
+  organization: 'Ministry of Education',
+  publishDate: '2025-04-01',
+  documents: [
+    { id: 1, name: 'Tender Specification Document', type: 'pdf', size: '2.4 MB' },
+    { id: 2, name: 'Equipment Requirements', type: 'docx', size: '1.8 MB' },
+    { id: 3, name: 'Evaluation Criteria', type: 'pdf', size: '1.1 MB' }
+  ],
+  winner: {
+    id: 'vendor-456',
+    name: 'Office Solutions Inc.',
+    score: 92,
+    submissionDate: '2025-04-15'
+  },
+  disputeTimeFrameDays: 7
 };
 
 const TenderDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const { user } = useAuth();
-  const [tender, setTender] = useState<Tender | null>(null);
-  const [proposals, setProposals] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<string>("overview");
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editedTender, setEditedTender] = useState<Partial<Tender> | null>(null);
+  
+  // In a real application, you would fetch the tender details using the ID
+  const tender = tenderData;
 
-  useEffect(() => {
-    const fetchTenderData = async () => {
-      try {
-        if (id) {
-          setLoading(true);
-          const tenderData = await api.tenders.getById(id);
-          setTender(tenderData);
-          setEditedTender(tenderData);
-          
-          // Fetch proposals if user is not a vendor
-          if (user?.role !== "vendor") {
-            const proposalData = await api.proposals.getAll(id);
-            setProposals(proposalData);
-          }
-          
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error fetching tender data:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchTenderData();
-  }, [id, user?.role]);
-
-  const isDeadlinePassed = tender ? isAfter(new Date(), new Date(tender.deadline)) : false;
-  const isVendor = user?.role === "vendor";
-  const isAdmin = user?.role === "admin";
-  const isPublished = tender?.status === "published";
-  const canSubmitProposal = isVendor && isPublished && !isDeadlinePassed;
-  const canEditTender = isAdmin && tender?.status !== "awarded" && tender?.status !== "archived";
-
-  const handleEditToggle = () => {
-    if (isEditing && editedTender) {
-      // Save changes
-      handleSaveTender();
-    } else {
-      // Enter edit mode
-      setIsEditing(true);
-    }
-  };
-
-  const handleSaveTender = async () => {
-    if (!editedTender || !tender) return;
-    
-    try {
-      // In a real app, this would be an API call to update the tender
-      console.log("Saving tender changes:", editedTender);
-      
-      // Mock API call
-      const updatedTender = await api.tenders.update(tender.id, editedTender);
-      setTender(updatedTender);
-      setIsEditing(false);
-      
-      // Show success toast
-      // toast({
-      //   title: "Tender updated",
-      //   description: "The tender has been updated successfully.",
-      // });
-    } catch (error) {
-      console.error("Error updating tender:", error);
-      // Show error toast
-      // toast({
-      //   title: "Error",
-      //   description: "Failed to update tender. Please try again.",
-      //   variant: "destructive",
-      // });
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setEditedTender(prev => prev ? { ...prev, [name]: value } : null);
-  };
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const numValue = parseFloat(value);
-    setEditedTender(prev => prev ? { ...prev, [name]: numValue } : null);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <Loader2 className="h-8 w-8 animate-spin mr-2" />
-        <span>Loading tender details...</span>
-      </div>
-    );
-  }
-
-  if (!tender) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh]">
-        <h2 className="text-2xl font-bold mb-2">Tender not found</h2>
-        <p className="text-gray-500 mb-4">The requested tender could not be found.</p>
-        <Button asChild>
-          <Link to="/tenders">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Tenders
-          </Link>
-        </Button>
-      </div>
-    );
-  }
-
+  const isAdmin = user?.role === 'admin';
+  const isVendor = user?.role === 'vendor';
+  const canSeeWinner = isAdmin || tender.status === 'Awarded';
+  const isWinner = isVendor && user?.id === tender.winner?.id;
+  
+  // Check if the current vendor is not the winner (can file a dispute)
+  const canFileDispute = isVendor && user?.id !== tender.winner?.id && tender.status === 'Awarded';
+  
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/tenders">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
-            </Link>
-          </Button>
-          <Badge variant={getStatusBadgeVariant(tender.status) as any} className="ml-2">
-            {tender.status.charAt(0).toUpperCase() + tender.status.slice(1)}
-          </Badge>
-        </div>
-        
-        <div className="flex gap-2">
-          {canEditTender && (
-            <Button onClick={handleEditToggle} variant={isEditing ? "default" : "outline"}>
-              <Pencil className="h-4 w-4 mr-2" />
-              {isEditing ? "Save Changes" : "Edit Tender"}
-            </Button>
-          )}
-          
-          {canSubmitProposal && (
-            <Button asChild>
-              <Link to={`/tenders/${tender.id}/apply`}>
-                <FilePlus className="h-4 w-4 mr-2" />
-                Submit Proposal
+    <MainLayout>
+      <div className="container mx-auto py-6">
+        <div className="flex flex-wrap gap-3 justify-between items-start mb-6">
+          <div>
+            <Button variant="outline" size="sm" className="mb-2" asChild>
+              <Link to="/tenders">
+                Back to Tenders
               </Link>
             </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="p-6 border-b">
-          {isEditing ? (
-            <input 
-              type="text" 
-              name="title"
-              value={editedTender?.title || ''} 
-              onChange={handleInputChange}
-              className="text-2xl font-bold mb-2 w-full border border-gray-300 rounded px-2 py-1"
-            />
-          ) : (
-            <h1 className="text-2xl font-bold mb-2">{tender.title}</h1>
-          )}
+            <h1 className="text-2xl font-bold">{tender.title}</h1>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <Badge>{tender.status}</Badge>
+              <Badge variant="outline">{tender.category}</Badge>
+              <div className="text-sm text-muted-foreground">ID: {tender.id}</div>
+            </div>
+          </div>
           
-          <div className="flex flex-wrap items-center text-sm text-gray-500 gap-x-6 gap-y-2">
-            <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-1" />
-              <span>Published: {format(new Date(tender.publishDate), "MMM d, yyyy")}</span>
-            </div>
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              {isEditing ? (
-                <input 
-                  type="date" 
-                  name="deadline"
-                  value={editedTender?.deadline ? new Date(editedTender.deadline).toISOString().split('T')[0] : ''} 
-                  onChange={handleInputChange}
-                  className="ml-1 border border-gray-300 rounded px-2 py-1"
-                />
-              ) : (
-                <span>Deadline: {format(new Date(tender.deadline), "MMM d, yyyy")}</span>
-              )}
-            </div>
-            <div className="flex items-center">
-              <Tag className="h-4 w-4 mr-1" />
-              {isEditing ? (
-                <input 
-                  type="text" 
-                  name="category"
-                  value={editedTender?.category || ''} 
-                  onChange={handleInputChange}
-                  className="ml-1 border border-gray-300 rounded px-2 py-1"
-                />
-              ) : (
-                <span>{tender.category}</span>
-              )}
-            </div>
-            <div className="flex items-center">
-              <DollarSign className="h-4 w-4 mr-1" />
-              {isEditing ? (
-                <div className="flex">
-                  <input 
-                    type="number" 
-                    name="budget"
-                    value={editedTender?.budget || 0} 
-                    onChange={handleNumberChange}
-                    className="ml-1 w-32 border border-gray-300 rounded px-2 py-1"
-                  />
-                  <input 
-                    type="text" 
-                    name="currency"
-                    value={editedTender?.currency || ''} 
-                    onChange={handleInputChange}
-                    className="ml-1 w-16 border border-gray-300 rounded px-2 py-1"
-                  />
-                </div>
-              ) : (
-                <span>{tender.budget.toLocaleString()} {tender.currency}</span>
-              )}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {isAdmin && tender.status !== 'Draft' && (
+              <Button variant="outline" asChild>
+                <Link to={`/tenders/${id}/edit`}>
+                  Edit Tender
+                </Link>
+              </Button>
+            )}
+            <RoleBasedSubmissionAccess tenderId={id || ''} />
+            {isAdmin && tender.status === 'Under Review' && (
+              <Button variant="default">
+                Announce Winner
+              </Button>
+            )}
           </div>
         </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="border-b">
-            <TabsList className="w-full justify-start rounded-none border-b-0 pl-6">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="questions">Questions</TabsTrigger>
-              <TabsTrigger value="criteria">Evaluation Criteria</TabsTrigger>
-              {!isVendor && (
-                <TabsTrigger value="proposals">
-                  Proposals ({proposals.length})
-                </TabsTrigger>
-              )}
-              {!isVendor && tender.status === "evaluating" && (
-                <TabsTrigger value="evaluation">Evaluation</TabsTrigger>
-              )}
-              {!isVendor && (
-                <TabsTrigger value="reports">Reports</TabsTrigger>
-              )}
-            </TabsList>
-          </div>
 
-          <TabsContent value="overview" className="p-6">
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium mb-2">Description</h3>
-                <div className="bg-gray-50 p-4 rounded-md border">
-                  {isEditing ? (
-                    <textarea
-                      name="description"
-                      value={editedTender?.description || ''}
-                      onChange={handleInputChange}
-                      className="w-full min-h-[150px] border border-gray-300 rounded px-2 py-1"
-                    />
-                  ) : (
-                    <p>{tender.description}</p>
-                  )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tender Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-medium mb-2">Description</h3>
+                  <p>{tender.description}</p>
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-4 flex items-center">
-                      <Calendar className="h-4 w-4 mr-2" /> Timeline
-                    </h4>
-                    <ul className="space-y-2">
-                      <li className="flex justify-between">
-                        <span className="text-gray-600">Published:</span>
-                        <span>{format(new Date(tender.publishDate), "MMM d, yyyy")}</span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-600">Submission Deadline:</span>
-                        <span>{format(new Date(tender.deadline), "MMM d, yyyy")}</span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-600">Time Remaining:</span>
-                        <span>
-                          {isDeadlinePassed 
-                            ? "Deadline passed" 
-                            : "Open for submissions"}
-                        </span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
                 
-                <Card>
-                  <CardContent className="p-4">
-                    <h4 className="font-medium mb-4 flex items-center">
-                      <Bookmark className="h-4 w-4 mr-2" /> Overview
-                    </h4>
-                    <ul className="space-y-2">
-                      <li className="flex justify-between">
-                        <span className="text-gray-600">Category:</span>
-                        <span>{tender.category}</span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-600">Budget:</span>
-                        <span>{tender.budget.toLocaleString()} {tender.currency}</span>
-                      </li>
-                      <li className="flex justify-between">
-                        <span className="text-gray-600">Status:</span>
-                        <Badge variant={getStatusBadgeVariant(tender.status) as any}>
-                          {tender.status.charAt(0).toUpperCase() + tender.status.slice(1)}
-                        </Badge>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="documents" className="p-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Tender Documents</h3>
-              {tender.documents.length > 0 ? (
-                <div className="bg-gray-50 rounded-md border">
-                  <ul className="divide-y">
-                    {tender.documents.map((doc) => (
-                      <li key={doc.id} className="p-4 flex items-start justify-between">
-                        <div className="flex items-start">
-                          <FileText className="h-5 w-5 mr-3 text-blue-500 mt-1" />
-                          <div>
-                            <h4 className="font-medium">{doc.name}</h4>
-                            {doc.description && (
-                              <p className="text-sm text-gray-500">{doc.description}</p>
-                            )}
-                            <p className="text-xs text-gray-500 mt-1">
-                              {(doc.fileSize / 1024 / 1024).toFixed(2)} MB • Uploaded {format(new Date(doc.uploadedAt), "MMM d, yyyy")}
-                            </p>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                            Download
-                          </a>
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div className="bg-gray-50 p-8 rounded-md border text-center">
-                  <p className="text-gray-500">No documents available for this tender.</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="questions" className="p-6">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Questions & Answers</h3>
-                {isVendor && isPublished && !isDeadlinePassed && (
-                  <Button>
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Ask a Question
-                  </Button>
-                )}
-              </div>
-              
-              {tender.questions.length > 0 ? (
-                <div className="space-y-4">
-                  {tender.questions.map((question) => (
-                    <Card key={question.id}>
-                      <CardContent className="p-4">
-                        <div className="space-y-3">
-                          <div>
-                            <div className="font-medium">{question.question}</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Asked on {format(new Date(question.askedAt), "MMM d, yyyy")}
-                            </div>
-                          </div>
-                          
-                          {question.answer ? (
-                            <div className="bg-gray-50 p-3 rounded-md mt-2 border-l-4 border-blue-400">
-                              <div className="text-sm">{question.answer}</div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                Answered on {question.answeredAt ? format(new Date(question.answeredAt), "MMM d, yyyy") : "N/A"}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="italic text-gray-500 text-sm">
-                              This question has not been answered yet.
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gray-50 p-8 rounded-md border text-center">
-                  <p className="text-gray-500">No questions have been asked yet.</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="criteria" className="p-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Evaluation Criteria</h3>
-              
-              <div className="bg-gray-50 rounded-md border">
-                <div className="p-4 border-b bg-gray-100">
-                  <div className="grid grid-cols-12 gap-4 font-medium">
-                    <div className="col-span-5">Criteria</div>
-                    <div className="col-span-5">Description</div>
-                    <div className="col-span-2 text-center">Weight</div>
+                <Separator />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>Deadline</span>
+                    </div>
+                    <div>{tender.deadline}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 text-sm text-muted-foreground">
+                      <DollarSign className="h-4 w-4" />
+                      <span>Budget</span>
+                    </div>
+                    <div>{tender.budget}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 text-sm text-muted-foreground">
+                      <Building className="h-4 w-4" />
+                      <span>Organization</span>
+                    </div>
+                    <div>{tender.organization}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>Published</span>
+                    </div>
+                    <div>{tender.publishDate}</div>
                   </div>
                 </div>
                 
-                <ul className="divide-y">
-                  {tender.criteria.map((criterion) => (
-                    <li key={criterion.id} className="p-4">
-                      <div className="grid grid-cols-12 gap-4">
-                        <div className="col-span-5 font-medium">{criterion.name}</div>
-                        <div className="col-span-5 text-sm">{criterion.description}</div>
-                        <div className="col-span-2 text-center">{criterion.weight}%</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </TabsContent>
-          
-          {!isVendor && (
-            <TabsContent value="proposals" className="p-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Submitted Proposals</h3>
+                <Separator />
                 
-                {proposals.length > 0 ? (
-                  <div className="bg-gray-50 rounded-md border">
-                    <div className="p-4 border-b bg-gray-100">
-                      <div className="grid grid-cols-12 gap-4 font-medium">
-                        <div className="col-span-4">Vendor</div>
-                        <div className="col-span-3">Submitted</div>
-                        <div className="col-span-2">Price</div>
-                        <div className="col-span-2">Status</div>
-                        <div className="col-span-1 text-right">Actions</div>
+                <div>
+                  <h3 className="font-medium mb-2">Tender Documents</h3>
+                  <div className="space-y-2">
+                    {tender.documents.map((doc) => (
+                      <div 
+                        key={doc.id}
+                        className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50"
+                      >
+                        <div className="flex items-center">
+                          <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                          <span>{doc.name}</span>
+                          <span className="text-xs text-muted-foreground ml-2">({doc.size})</span>
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {canSeeWinner && tender.winner && (
+              <Card className={isWinner ? "border-green-200 bg-green-50" : ""}>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle className={`h-5 w-5 ${isWinner ? "text-green-500" : "text-blue-500"}`} />
+                      Winner
+                    </CardTitle>
+                    {isWinner && (
+                      <Badge className="bg-green-100 text-green-800">You won this tender</Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Vendor</div>
+                      <div className="font-medium flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        {tender.winner.name}
                       </div>
                     </div>
                     
-                    <ul className="divide-y">
-                      {proposals.map((proposal) => (
-                        <li key={proposal.id} className="p-4">
-                          <div className="grid grid-cols-12 gap-4 items-center">
-                            <div className="col-span-4 font-medium">{proposal.vendorName}</div>
-                            <div className="col-span-3 text-sm">
-                              {format(new Date(proposal.submittedAt), "MMM d, yyyy")}
-                            </div>
-                            <div className="col-span-2">
-                              {proposal.price.toLocaleString()} {proposal.currency}
-                            </div>
-                            <div className="col-span-2">
-                              <Badge variant={
-                                proposal.status === "awarded" ? "success" : 
-                                proposal.status === "rejected" ? "destructive" : 
-                                "secondary"
-                              }>
-                                {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
-                              </Badge>
-                            </div>
-                            <div className="col-span-1 text-right">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link to={`/proposals/${proposal.id}`}>
-                                  View
-                                </Link>
-                              </Button>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Evaluation Score</div>
+                      <div className="font-medium">{tender.winner.score}/100</div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="bg-gray-50 p-8 rounded-md border text-center">
-                    <p className="text-gray-500">No proposals have been submitted yet.</p>
+                  
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Winner announced on {tender.endDate}
+                    </div>
+                    
+                    {canFileDispute && (
+                      <DisputeButton
+                        tenderId={tender.id}
+                        tenderTitle={tender.title}
+                        winnerId={tender.winner.id}
+                        winnerName={tender.winner.name}
+                        tenderEndDate={tender.endDate}
+                        disputeTimeFrameDays={tender.disputeTimeFrameDays}
+                      />
+                    )}
                   </div>
-                )}
-              </div>
-            </TabsContent>
-          )}
-          
-          {!isVendor && tender.status === "evaluating" && (
-            <TabsContent value="evaluation" className="p-6">
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">Proposal Evaluation</h3>
-                
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h4 className="font-medium flex items-center">
-                          <ClipboardCheck className="h-4 w-4 mr-2" />
-                          Evaluation Progress
-                        </h4>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Track the evaluation progress for each proposal.
-                        </p>
-                      </div>
-                      <Button>
-                        <Users className="h-4 w-4 mr-2" />
-                        Manage Evaluators
+
+                  {isAdmin && (
+                    <div className="mt-4">
+                      <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
+                        <Link to={`/tenders/${tender.id}/disputes`}>
+                          <Flag className="h-4 w-4" />
+                          View Disputes
+                          <Badge variant="secondary" className="ml-1">2</Badge>
+                        </Link>
                       </Button>
                     </div>
-                    
-                    {proposals.length > 0 ? (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {proposals.map((proposal) => (
-                            <div key={proposal.id} className="border rounded-md p-4">
-                              <div className="flex justify-between items-start mb-3">
-                                <div>
-                                  <h5 className="font-medium">{proposal.vendorName}</h5>
-                                  <p className="text-sm text-gray-500">
-                                    Submitted: {format(new Date(proposal.submittedAt), "MMM d, yyyy")}
-                                  </p>
-                                </div>
-                                <Badge variant={
-                                  proposal.status === "awarded" ? "success" : 
-                                  proposal.status === "rejected" ? "destructive" : 
-                                  "secondary"
-                                }>
-                                  {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
-                                </Badge>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <p className="text-sm">Evaluation Progress:</p>
-                                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                  <div 
-                                    className="bg-blue-600 h-2.5 rounded-full" 
-                                    style={{ width: `${proposal.evaluationScores ? 75 : 0}%` }}
-                                  ></div>
-                                </div>
-                                <div className="flex justify-between text-xs text-gray-500">
-                                  <span>Not Started</span>
-                                  <span>In Progress</span>
-                                  <span>Complete</span>
-                                </div>
-                              </div>
-                              
-                              <div className="mt-4">
-                                <Button size="sm" variant="outline" className="w-full" asChild>
-                                  <Link to={`/proposals/${proposal.id}/evaluate`}>
-                                    {proposal.evaluationScores ? "Continue Evaluation" : "Start Evaluation"}
-                                  </Link>
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 p-6 rounded-md border text-center">
-                        <p className="text-gray-500">No proposals available for evaluation.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          )}
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
           
-          {!isVendor && (
-            <TabsContent value="reports" className="p-6">
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">Reports & Tracking</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-4">Tender Timeline</h4>
-                      <div className="space-y-4">
-                        <div className="relative flex items-center">
-                          <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full border-2 border-green-500">
-                            <Calendar className="h-5 w-5 text-green-500" />
-                          </div>
-                          <div className="flex-1 ml-4">
-                            <h5 className="text-sm font-medium">Published</h5>
-                            <p className="text-xs text-gray-500">
-                              {format(new Date(tender.publishDate), "MMM d, yyyy")}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="relative flex items-center">
-                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                            isDeadlinePassed ? "bg-green-100 border-green-500" : "bg-gray-100 border-gray-300"
-                          }`}>
-                            <Clock className={`h-5 w-5 ${isDeadlinePassed ? "text-green-500" : "text-gray-500"}`} />
-                          </div>
-                          <div className="flex-1 ml-4">
-                            <h5 className="text-sm font-medium">Submission Deadline</h5>
-                            <p className="text-xs text-gray-500">
-                              {format(new Date(tender.deadline), "MMM d, yyyy")}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="relative flex items-center">
-                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                            tender.status === "evaluating" || tender.status === "awarded" 
-                              ? "bg-green-100 border-green-500" 
-                              : "bg-gray-100 border-gray-300"
-                          }`}>
-                            <ClipboardCheck className={`h-5 w-5 ${
-                              tender.status === "evaluating" || tender.status === "awarded" 
-                                ? "text-green-500" 
-                                : "text-gray-500"
-                            }`} />
-                          </div>
-                          <div className="flex-1 ml-4">
-                            <h5 className="text-sm font-medium">Evaluation</h5>
-                            <p className="text-xs text-gray-500">
-                              {tender.status === "evaluating" 
-                                ? "In progress" 
-                                : tender.status === "awarded" 
-                                ? "Completed" 
-                                : "Not started"}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="relative flex items-center">
-                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                            tender.status === "awarded" 
-                              ? "bg-green-100 border-green-500" 
-                              : "bg-gray-100 border-gray-300"
-                          }`}>
-                            <Award className={`h-5 w-5 ${tender.status === "awarded" ? "text-green-500" : "text-gray-500"}`} />
-                          </div>
-                          <div className="flex-1 ml-4">
-                            <h5 className="text-sm font-medium">Award Decision</h5>
-                            <p className="text-xs text-gray-500">
-                              {tender.status === "awarded" ? "Contract awarded" : "Pending"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Timeline</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="relative pl-8">
+                  <div className="absolute left-2 h-full w-0.5 bg-muted-foreground/20"></div>
                   
-                  <Card>
-                    <CardContent className="p-4">
-                      <h4 className="font-medium mb-4">Reports</h4>
-                      <div className="space-y-3">
-                        <Button variant="outline" className="w-full justify-start" disabled={!isDeadlinePassed}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Generate Proposals Summary Report
-                        </Button>
-                        
-                        <Button variant="outline" className="w-full justify-start" disabled={tender.status !== "evaluating" && tender.status !== "awarded"}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Generate Evaluation Report
-                        </Button>
-                        
-                        <Button variant="outline" className="w-full justify-start" disabled={tender.status !== "awarded"}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Generate Award Decision Report
-                        </Button>
-                        
-                        <Button variant="outline" className="w-full justify-start">
-                          <FileText className="h-4 w-4 mr-2" />
-                          Export Tender Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="relative mb-6">
+                    <div className="absolute left-[-1.75rem] w-4 h-4 rounded-full bg-primary"></div>
+                    <div className="text-sm text-muted-foreground mb-1">Published</div>
+                    <div className="font-medium">{tender.publishDate}</div>
+                  </div>
+                  
+                  <div className="relative mb-6">
+                    <div className="absolute left-[-1.75rem] w-4 h-4 rounded-full bg-primary"></div>
+                    <div className="text-sm text-muted-foreground mb-1">Submission Deadline</div>
+                    <div className="font-medium">{tender.deadline}</div>
+                  </div>
+                  
+                  <div className="relative mb-6">
+                    <div className="absolute left-[-1.75rem] w-4 h-4 rounded-full bg-primary"></div>
+                    <div className="text-sm text-muted-foreground mb-1">Winner Announced</div>
+                    <div className="font-medium">{tender.endDate}</div>
+                  </div>
+                  
+                  <div className="relative">
+                    <div className="absolute left-[-1.75rem] w-4 h-4 rounded-full bg-muted-foreground/50"></div>
+                    <div className="text-sm text-muted-foreground mb-1">Dispute Window Ends</div>
+                    <div className="font-medium">
+                      {(() => {
+                        const endDate = new Date(tender.endDate);
+                        endDate.setDate(endDate.getDate() + tender.disputeTimeFrameDays);
+                        return endDate.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        });
+                      })()}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Vendors can file disputes up to {tender.disputeTimeFrameDays} days after winner announcement.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
-          )}
-        </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
-    </div>
+    </MainLayout>
   );
 };
 

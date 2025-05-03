@@ -1,29 +1,52 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
+interface IUser extends Document {
+  username: string;
+  password: string;
+  email?: string;
+  role: 'ProcurementManager' | 'Vendor' | 'Evaluator';
+  name?: string;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const userSchema = new Schema<IUser>(
+  {
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple documents to omit this field
+    },
+    name: {
+      type: String,
+    },
+    role: {
+      type: String,
+      enum: ['ProcurementManager', 'Vendor', 'Evaluator'],
+      default: 'Vendor',
+    },
+    avatar: {
+      type: String,
+    },
   },
-  password: { // It's crucial to handle password hashing properly in a real application!
-    type: String,
-    required: true,
-  },
-  email: {
-    type: String,
-    unique: true,
-    sparse: true, // Allows multiple documents to omit this field
-  },
-  role: {
-    type: String,
-    enum: ['ProcurementManager', 'Vendor', 'Evaluator'],
-    default: 'Vendor',
+  {
+    timestamps: true,
   }
-});
+);
 
-const MyUser = mongoose.model('User', userSchema);
+const User = mongoose.model<IUser>('User', userSchema);
 
-export { MyUser };
-export type UserDocument = mongoose.InferSchemaType<typeof userSchema> & {_id: string};
-export type UserDtos = Pick<UserDocument, 'username' | 'password' | 'email' | 'role'>; // Example DTO
+export default User;
+export { IUser };
+export type UserDocument = IUser;
+export type UserDto = Pick<IUser, 'username' | 'email' | 'role' | 'name'>;
