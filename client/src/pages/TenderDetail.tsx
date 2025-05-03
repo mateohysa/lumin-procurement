@@ -50,12 +50,18 @@ const TenderDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
   
-  // In a real application, you would fetch the tender details using the ID
-  const tender = tenderData;
-
+  // In reality you'd fetch tender details by ID; here we override mock status for open-tender testing
+  const numericId = Number(id);
+  // Treat IDs below 6 as open tenders for mock
+  const isOpenTender = numericId < 6;
+  const tender = {
+    ...tenderData,
+    status: numericId < 6 ? 'Open' : tenderData.status,
+  };
+  
   const isAdmin = user?.role === 'admin';
   const isVendor = user?.role === 'vendor';
-  const canSeeWinner = isAdmin || tender.status === 'Awarded';
+  const canSeeWinner = tender.status === 'Awarded';
   const isWinner = isVendor && user?.id === tender.winner?.id;
   
   // Check if the current vendor is not the winner (can file a dispute)
@@ -87,7 +93,8 @@ const TenderDetail = () => {
                 </Link>
               </Button>
             )}
-            <RoleBasedSubmissionAccess tenderId={id || ''} />
+            {/* Hide View Submissions on open tenders */}
+            {!isOpenTender && <RoleBasedSubmissionAccess tenderId={id || ''} />}
             {isAdmin && tender.status === 'Under Review' && (
               <Button variant="default">
                 Announce Winner
@@ -169,7 +176,8 @@ const TenderDetail = () => {
               </CardContent>
             </Card>
 
-            {canSeeWinner && tender.winner && (
+            {/* Hide Winner on open tenders */}
+            {!isOpenTender && canSeeWinner && tender.winner && (
               <Card className={isWinner ? "border-green-200 bg-green-50" : ""}>
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-center">

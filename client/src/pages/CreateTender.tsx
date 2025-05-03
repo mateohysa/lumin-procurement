@@ -138,6 +138,9 @@ const CreateTender = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [customCriteria, setCustomCriteria] = useState<{name: string, weight: number}[]>([]);
   const [usePresetCriteria, setUsePresetCriteria] = useState(true);
+  const [presetCriteria, setPresetCriteria] = useState(evaluationCriteriaTemplates);
+  const [editingCriteriaId, setEditingCriteriaId] = useState<string | null>(null);
+  const [editingWeight, setEditingWeight] = useState<number | ''>('');
   const totalSteps = 5;
   
   // Steps and their icons
@@ -428,13 +431,50 @@ const CreateTender = () => {
                       </p>
                       
                       <div className="space-y-4">
-                        {evaluationCriteriaTemplates.map((criteria) => (
+                        {presetCriteria.map((criteria) => (
                           <div key={criteria.id} className="flex items-center justify-between p-3 border rounded-lg">
                             <div className="flex items-center gap-3">
                               <CheckCircle2 className="h-5 w-5 text-primary" />
-                              <span>{criteria.name} ({criteria.weight}%)</span>
+                              {editingCriteriaId === criteria.id ? (
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={editingWeight}
+                                    onChange={(e) => setEditingWeight(e.target.value === '' ? '' : parseInt(e.target.value))}
+                                    className="w-20"
+                                  />
+                                  <span>%</span>
+                                </div>
+                              ) : (
+                                <span>{criteria.name} ({criteria.weight}%)</span>
+                              )}
                             </div>
-                            <Button variant="outline" size="sm">Edit Weight</Button>
+                            {editingCriteriaId === criteria.id ? (
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" onClick={() => {
+                                  if (typeof editingWeight === 'number') {
+                                    const updated = presetCriteria.map(c => c.id === criteria.id ? {...c, weight: editingWeight} : c);
+                                    setPresetCriteria(updated);
+                                    setValue('evaluationCriteria', updated);
+                                  }
+                                  setEditingCriteriaId(null);
+                                }}>
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingCriteriaId(null)}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button variant="outline" size="sm" onClick={() => {
+                                setEditingCriteriaId(criteria.id);
+                                setEditingWeight(criteria.weight);
+                              }}>
+                                Edit Weight
+                              </Button>
+                            )}
                           </div>
                         ))}
                       </div>

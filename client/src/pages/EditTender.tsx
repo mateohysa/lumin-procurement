@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -53,6 +52,10 @@ const EditTender = () => {
   const [documents, setDocuments] = useState<{ name: string; size: string; type: string }[]>([]);
   const [evaluators, setEvaluators] = useState<string[]>([]);
   const [categories, setCategories] = useState(mockCategories);
+  // Front-end only: full list of evaluators for selection
+  const allEvaluatorsList = ['John Smith', 'Emma Wilson', 'Michael Brown', 'Anna Smith'];
+  // Filter out already assigned evaluators
+  const availableEvaluatorsOptions = allEvaluatorsList.filter(name => !evaluators.includes(name));
 
   useEffect(() => {
     // Mock fetch - replace with actual API call
@@ -136,10 +139,6 @@ const EditTender = () => {
             </div>
             
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary">
-                <ClipboardList className="h-4 w-4 mr-2" />
-                View Submissions
-              </Button>
               <Button onClick={handleSave}>
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
@@ -151,208 +150,41 @@ const EditTender = () => {
         {/* Main Form Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <Tabs defaultValue="details">
-              <TabsList className="mb-4">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="requirements">Requirements</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                <TabsTrigger value="evaluators">Evaluators</TabsTrigger>
-              </TabsList>
-              
-              {/* Details Tab */}
-              <TabsContent value="details">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tender Details</CardTitle>
-                    <CardDescription>
-                      Update the basic details of this tender
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Title */}
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input 
-                        id="title" 
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Enter tender title" 
-                      />
+            <Card>
+              <CardHeader>
+                <CardTitle>Assigned Evaluators</CardTitle>
+                <CardDescription>
+                  Manage the evaluators assigned to this tender
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {evaluators.map((evaluator, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-md">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-5 w-5 text-blue-500" />
+                      <p className="font-medium text-sm">{evaluator}</p>
                     </div>
-                    
-                    {/* Reference Number */}
-                    <div className="space-y-2">
-                      <Label htmlFor="reference">Reference Number</Label>
-                      <Input 
-                        id="reference"
-                        value={reference}
-                        onChange={(e) => setReference(e.target.value)}
-                        placeholder="e.g., T-2023-42" 
-                      />
-                    </div>
-                    
-                    {/* Description */}
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea 
-                        id="description" 
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Enter a detailed description of the tender" 
-                        rows={4}
-                      />
-                    </div>
-                    
-                    {/* Category */}
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select 
-                        value={category} 
-                        onValueChange={setCategory}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat} value={cat}>
-                              {cat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {/* Deadline */}
-                    <div className="space-y-2">
-                      <Label>Submission Deadline</Label>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <DatePicker
-                          selected={deadline}
-                          onSelect={setDeadline}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Budget */}
-                    <div className="space-y-2">
-                      <Label htmlFor="budget">Estimated Budget</Label>
-                      <Input 
-                        id="budget"
-                        value={budget}
-                        onChange={(e) => setBudget(e.target.value)}
-                        placeholder="e.g., $50,000" 
-                      />
-                    </div>
-                    
-                    {/* NDA Requirement */}
-                    <div className="flex items-center justify-between space-y-0">
-                      <Label htmlFor="requires-nda">Require NDA from vendors</Label>
-                      <Switch
-                        id="requires-nda"
-                        checked={requiresNDA}
-                        onCheckedChange={setRequiresNDA}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              {/* Requirements Tab */}
-              <TabsContent value="requirements">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tender Requirements</CardTitle>
-                    <CardDescription>
-                      Specify the key requirements for this tender
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <p className="text-muted-foreground">
-                      Coming Soon: Define specific requirements that vendors must meet.
-                    </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              {/* Documents Tab */}
-              <TabsContent value="documents">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tender Documents</CardTitle>
-                    <CardDescription>
-                      Upload and manage documents related to this tender
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="border rounded-md p-4">
-                        <FileUploader onFileUpload={handleFileUpload} />
-                      </div>
-                      
-                      {documents.length > 0 && (
-                        <div className="space-y-3 mt-6">
-                          <h3 className="text-sm font-medium">Uploaded Documents</h3>
-                          {documents.map((doc, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 border rounded-md">
-                              <div className="flex items-center gap-3">
-                                <FilePlus className="h-5 w-5 text-blue-500" />
-                                <div>
-                                  <p className="font-medium text-sm">{doc.name}</p>
-                                  <p className="text-xs text-muted-foreground">{doc.size} • {doc.type}</p>
-                                </div>
-                              </div>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleRemoveDocument(index)}
-                              >
-                                <Trash2 className="h-4 w-4 text-muted-foreground" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              {/* Evaluators Tab */}
-              <TabsContent value="evaluators">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Assigned Evaluators</CardTitle>
-                    <CardDescription>
-                      Manage the evaluators assigned to this tender
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {evaluators.map((evaluator, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-md">
-                        <div className="flex items-center gap-3">
-                          <Users className="h-5 w-5 text-blue-500" />
-                          <p className="font-medium text-sm">{evaluator}</p>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleRemoveEvaluator(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    ))}
-                    
-                    <Button variant="outline" onClick={handleAddEvaluator} className="w-full">
-                      Add Evaluator
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleRemoveEvaluator(index)}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                  </div>
+                ))}
+                <Select onValueChange={(value) => setEvaluators([...evaluators, value])}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Add Evaluator" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableEvaluatorsOptions.map(name => (
+                      <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
           </div>
           
           {/* Sidebar */}
@@ -402,10 +234,6 @@ const EditTender = () => {
                 <Button className="w-full" variant="outline">
                   <Tag className="h-4 w-4 mr-2" />
                   Add Tags
-                </Button>
-                <Button className="w-full" variant="outline">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Update Deadline
                 </Button>
               </CardContent>
             </Card>
