@@ -1,16 +1,15 @@
 import 'dotenv/config';
 // Environment setup
 
-
-
 import { connectDB } from './config/db.config.js';
 import express from 'express';
 import cors from 'cors';
 import { authenticateJWT, isVendor, isEvaluator, isProcurementManager } from './middleware/jwtAuth.js';
 
 // Routes
-import loginRoute from './routes/login';
-import registerRoute from './routes/register';
+import loginRoute from './routes/login.js';
+import registerRoute from './routes/register.js';
+import tenderRoutes from './routes/tenders.js';
 
 // Connect to MongoDB
 connectDB();
@@ -27,6 +26,7 @@ app.use(cors({
 // API Routes
 app.use('/api/login', loginRoute);
 app.use('/api/register', registerRoute);
+app.use('/api/tenders', tenderRoutes);
 
 // Protected routes
 app.get('/api/profile', authenticateJWT, (req, res) => {
