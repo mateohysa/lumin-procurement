@@ -11,8 +11,6 @@ import { FileUploader } from '@/components/tenders/FileUploader';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import apiClient from '@/lib/api-client';
-import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   BarChart2, 
@@ -33,6 +31,8 @@ import {
   CardHeader,
   CardTitle 
 } from '@/components/ui/card';
+import { tenderApi } from '@/lib/api-client';
+import { useNavigate } from 'react-router-dom';
 
 // Tender categories for select dropdown
 const tenderCategories = [
@@ -144,6 +144,7 @@ const CreateTender = () => {
   const [editingCriteriaId, setEditingCriteriaId] = useState<string | null>(null);
   const [editingWeight, setEditingWeight] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const totalSteps = 5;
   
@@ -181,32 +182,25 @@ const CreateTender = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
-      try {
-        setLoading(true);
-        console.log('Form submitted:', data);
-        
-        // Format the data for the API
-        const tenderPayload = {
-          title: data.title,
-          description: data.description,
-          category: data.category === 'other' ? data.customCategory : data.category,
-          budget: parseFloat(data.budget) || 0,
-          deadline: data.submissionDeadline,
-          status: 'draft',
-          documents: data.documents.map(file => ({
-            name: file.name,
-            url: 'placeholder-url' // In a real app, you would upload files to a storage service
-          })),
-          evaluationCriteria: usePresetCriteria 
-            ? data.evaluationCriteria 
-            : customCriteria.filter(c => c.name.trim() !== ''),
-          assignedEvaluators: data.selectedEvaluators
-        };
+      // Format the data for the API
+      const formattedData = {
+        title: data.title,
+        description: data.description,
+        category: data.category === 'other' ? data.customCategory : data.category,
+        budget: parseFloat(data.budget),
+        deadline: data.submissionDeadline,
+        status: 'draft', // Start as draft
+        evaluationCriteria: usePresetCriteria ? 
+          evaluationCriteriaTemplates : 
+          customCriteria.map(c => ({ name: c.name, weight: c.weight })),
+        assignedEvaluators: data.selectedEvaluators,
+        // Add any other necessary fields from the form
+      };
 
-        // Send data to the backend
-        const response = await apiClient.post('/tenders', tenderPayload);
-        
-        console.log('API response:', response.data);
+      try {
+        setIsSubmitting(true);
+        // Send the data to the backend API
+        const response = await tenderApi.createTender(formattedData);
         
         // Show success toast
         toast({
@@ -214,20 +208,20 @@ const CreateTender = () => {
           description: 'Tender has been created successfully.',
           variant: 'default',
         });
-        
-        // Redirect to the tenders list
-        navigate('/tenders');
-      } catch (error: any) {
+
+        // Redirect to the tender detail page or tenders list
+        navigate(`/tenders/${response.data._id}`);
+      } catch (error) {
         console.error('Error creating tender:', error);
         
         // Show error toast
         toast({
           title: 'Error',
-          description: error.response?.data?.message || 'Failed to create tender. Please try again.',
+          description: 'Failed to create tender. Please try again.',
           variant: 'destructive',
         });
       } finally {
-        setLoading(false);
+        setIsSubmitting(false);
       }
     }
   };
@@ -709,23 +703,23 @@ const CreateTender = () => {
                     type="button"
                     variant="outline"
                     onClick={previousStep}
-                    disabled={loading}
+                    disabled={isSubmitting}
                   >
                     Previous
                   </Button>
                 ) : (
-                  <Button type="button" variant="outline" disabled={loading}>
+                  <Button type="button" variant="outline" disabled={isSubmitting}>
                     Save Draft
                   </Button>
                 )}
                 
                 {currentStep < totalSteps ? (
-                  <Button type="submit" disabled={loading}>
+                  <Button type="submit" disabled={isSubmitting}>
                     Continue
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={loading}>
-                    {loading ? 'Creating...' : 'Create Tender'}
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creating...' : 'Create Tender'}
                   </Button>
                 )}
               </div>
