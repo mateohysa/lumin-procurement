@@ -46,7 +46,7 @@ const userSchema = new Schema<IUser>(
 
 const User = mongoose.model<IUser>('User', userSchema);
 
-export default User;
+export default  User;
 export { IUser };
 export type UserDocument = IUser;
 export type UserDto = Pick<IUser, 'username' | 'email' | 'role' | 'name'>;

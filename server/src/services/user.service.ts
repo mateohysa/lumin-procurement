@@ -1,8 +1,8 @@
-import { UserDtos, UserDocument, MyUser } from '../models/user.model.js'; // Adjust the path as needed
+import User, { UserDto, UserDocument } from '../models/userModel.js'; // Adjust the path as needed
 
-export async function insertUser(user: UserDtos): Promise<boolean> {
+export async function insertUser(user: UserDto): Promise<boolean> {
   try {
-    const newUser = new MyUser(user);
+    const newUser = new User(user);
     const savedUser = await newUser.save();
     console.log(savedUser);
     return true;
@@ -14,7 +14,7 @@ export async function insertUser(user: UserDtos): Promise<boolean> {
 
 export async function findUserById(id: string): Promise<UserDocument | null> {
   try {
-    const user = await MyUser.findById(id) as UserDocument; // Mongoose uses _id by default
+    const user = await User.findById(id) as UserDocument; // Mongoose uses _id by default
     return user ?? null;
   } catch (error) {
     console.error(error);
@@ -24,7 +24,7 @@ export async function findUserById(id: string): Promise<UserDocument | null> {
 
 export async function findUserbyUsername(username: string): Promise<UserDocument | null> {
   try {
-    const user = await MyUser.findOne({ username }) as UserDocument; // Use findOne with a query object
+    const user = await User.findOne({ username }) as UserDocument; // Use findOne with a query object
     return user ?? null;
   } catch (error) {
     console.error(error);

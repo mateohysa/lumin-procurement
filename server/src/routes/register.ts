@@ -1,7 +1,7 @@
 import { Router, Request, Response, json } from "express";
 import { insertUser } from "../services/user.service.js";
 import bcrypt from 'bcryptjs';
-import { UserDtos } from "../models/user.model.js";
+import { UserDtos } from "../models/userModel.js";
 import { checkNotAuthenticated } from "../middleware/checkAuth.js";
 
 // :/register

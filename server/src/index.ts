@@ -18,7 +18,7 @@ import {findUserbyUsername, findUserById} from './services/user.service.js';
 
 import registerRoute from './routes/register.js';
 import loginRoute from './routes/login.js';
-import { UserDocument } from './models/user.model.js';
+import { UserDocument } from './models/userModel.js';
 import { checkAuthenticated } from './middleware/checkAuth.js';
 
 initializePassport(
@@ -31,7 +31,7 @@ const app = express();
 
 app.use(flash());
 app.use(session({
-  secret: process.env.SESSION_SECRET ?? 'to remove the warning',
+  secret: process.env.SESSION_SECRET ?? 'secure_session_secret',
   resave: false, //this just resaves if nothing has changed, which usually we don't want to do
   saveUninitialized: false,  //saves an empty value in the session, if there is no value, and we don't want to do that 
   cookie: { secure: 'auto', maxAge: 1000*60*60*24 }  //secure: true -> only works for https
@@ -46,22 +46,42 @@ app.use(cors({
   origin: 'http://localhost:5173' //you have to make a callback function if you want more than one possible origin
 }));
 
+app.use(express.json()); // Add this line to parse JSON request bodies
+
 // nga ketu fillojne routes normally
 
 app.use('/register', registerRoute);
 app.use('/login', loginRoute(passport));
 
 app.get('/', checkAuthenticated, (req,res)=>{
-  const {username, email, role} = req.user as UserDocument;
-  res.json({email, username, role}); //we have removed the password in the serialization process, so this should be fine
+  const {username, email, role, name, avatar, _id} = req.user as Express.User;
+  res.json({username, email, role, name, avatar, _id}); //we have removed the password in the serialization process, so this should be fine
 });
 
-app.delete('/logout', checkAuthenticated, (req, res)=>{
-  req.logOut(err => console.log(err));
+app.get('/profile', checkAuthenticated, (req, res) => {
+  const {username, email, role, name, avatar, _id} = req.user as Express.User;
   res.json({
     success: true,
-    message: 'Logged out successfully'
+    user: {username, email, role, name, avatar, _id}
   });
 });
 
-app.listen(3000, ()=> console.log('listening on port: 3000'));
+app.delete('/logout', checkAuthenticated, (req, res)=>{
+  req.logOut(err => {
+    if (err) {
+      console.log(err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error logging out',
+        error: err.message
+      });
+    }
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=> console.log(`Server running on port: ${PORT}`));

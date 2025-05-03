@@ -1,7 +1,7 @@
 import { PassportStatic } from 'passport';//this is just for typescript
 import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
-import { MyUser, UserDocument } from '../models/user.model.js';
+import User, { UserDocument } from '../models/userModel.js';
 
 export default function initialize(
   passport: PassportStatic, 
@@ -32,7 +32,7 @@ export default function initialize(
   //so it stops giving those errors
   passport.deserializeUser(async (id:string, done) => {
     const deserializedUser = await getUserById(id);
-    return done(null, deserializedUser);
+    return done(null, deserializedUser as Express.User);
   });
 
 }
