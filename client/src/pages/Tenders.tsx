@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +11,8 @@ import {
   Edit,
   Users,
   Trophy,
-  Award
+  Award,
+  Loader2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -25,71 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-
-// Mock tender data
-const tenders = [
-  {
-    id: 1,
-    title: 'Office Equipment Procurement',
-    description: 'Seeking a vendor to supply office equipment including computers, printers, and furniture.',
-    category: 'IT',
-    status: 'Open',
-    deadline: '2025-05-30',
-    submissions: 4,
-    evaluators: 2
-  },
-  {
-    id: 2,
-    title: 'IT Services Procurement',
-    description: 'Looking for a provider of IT services, including network maintenance, cybersecurity, and cloud solutions.',
-    category: 'IT',
-    status: 'Open',
-    deadline: '2025-06-15',
-    submissions: 7,
-    evaluators: 3
-  },
-  {
-    id: 3,
-    title: 'Construction Services',
-    description: 'Requesting bids for construction services for a new office building.',
-    category: 'Construction',
-    status: 'Open',
-    deadline: '2025-07-01',
-    submissions: 3,
-    evaluators: 2
-  },
-  {
-    id: 4,
-    title: 'Office Supplies Contract',
-    description: 'Recurring supply of office materials including paper, pens, and other stationery items.',
-    category: 'Supply',
-    status: 'Open',
-    deadline: '2025-05-20',
-    submissions: 5,
-    evaluators: 1
-  },
-  {
-    id: 5,
-    title: 'Networking Equipment',
-    description: 'Procurement of routers, switches, and other networking equipment for a new data center.',
-    category: 'IT',
-    status: 'Open',
-    deadline: '2025-06-10',
-    submissions: 6,
-    evaluators: 2
-  },
-  {
-    id: 6,
-    title: 'Building Renovation',
-    description: 'Renovation of an existing government building, including structural repairs and interior updates.',
-    category: 'Construction',
-    status: 'Closed',
-    deadline: '2025-04-15',
-    submissions: 8,
-    evaluators: 3,
-    winner: 'Superior Construction Co.'
-  },
-];
+import { tenderApi } from '@/lib/api-client';
 
 // Mock tender evaluation results data
 const tenderResults = {
@@ -166,6 +102,8 @@ const tenderResults = {
 };
 
 const Tenders = () => {
+  const [tenders, setTenders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectingWinner, setSelectingWinner] = useState<{ tenderId: number | null, submissionId: number | null }>({
     tenderId: null,
     submissionId: null
@@ -174,9 +112,33 @@ const Tenders = () => {
   const [currentTenderId, setCurrentTenderId] = useState<number | null>(null);
   const navigate = useNavigate();
 
+  // Fetch tenders from API
+  useEffect(() => {
+    const fetchTenders = async () => {
+      try {
+        setLoading(true);
+        const response = await tenderApi.getTenders();
+        setTenders(response.data);
+      } catch (error) {
+        console.error('Error fetching tenders:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load tenders. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTenders();
+  }, []);
+
   const filteredTendersByStatus = (status: string) => {
     if (status === 'all') return tenders;
-    return tenders.filter(tender => tender.status.toLowerCase() === status.toLowerCase());
+    return tenders.filter(tender => 
+      tender.status && tender.status.toLowerCase() === status.toLowerCase()
+    );
   };
 
   const handleShowResults = (tenderId: number) => {
@@ -202,12 +164,12 @@ const Tenders = () => {
   };
 
   const renderTenderCard = (tender: any) => (
-    <Card key={tender.id}>
+    <Card key={tender._id || tender.id}>
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl">{tender.title}</CardTitle>
-          <Badge variant={tender.status === 'Open' ? 'default' : 'secondary'}>
-            {tender.status}
+          <Badge variant={tender.status === 'Open' || tender.status === 'draft' ? 'default' : 'secondary'}>
+            {tender.status === 'draft' ? 'Draft' : tender.status}
           </Badge>
         </div>
       </CardHeader>
@@ -218,25 +180,29 @@ const Tenders = () => {
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span>Deadline: {tender.deadline}</span>
+            <span>Deadline: {tender.deadline 
+              ? new Date(tender.deadline).toLocaleDateString() 
+              : 'Not set'}</span>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">{tender.category}</Badge>
           </div>
           <div className="flex items-center gap-2 mt-1">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span>Evaluators: {tender.evaluators}</span>
+            <span>Evaluators: {tender.assignedEvaluators?.length || 0}</span>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className="bg-blue-50">Submissions: {tender.submissions}</Badge>
+            <Badge variant="outline" className="bg-blue-50">
+              Submissions: {tender.submissions?.length || 0}
+            </Badge>
           </div>
         </div>
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-4">
         <div className="flex gap-2">
-          {tender.status === 'Open' ? (
+          {tender.status === 'Open' || tender.status === 'draft' ? (
             <Button variant="ghost" size="sm" asChild>
-              <Link to={`/tenders/${tender.id}/edit`}>
+              <Link to={`/tenders/${tender._id || tender.id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Link>
@@ -245,7 +211,7 @@ const Tenders = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => handleShowResults(tender.id)}
+              onClick={() => handleShowResults(tender._id || tender.id)}
             >
               <Trophy className="mr-2 h-4 w-4 text-amber-500" />
               Results
@@ -253,7 +219,7 @@ const Tenders = () => {
           )}
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/tenders/${tender.id}`}>
+          <Link to={`/tenders/${tender._id || tender.id}`}>
             View Details
           </Link>
         </Button>
@@ -277,31 +243,47 @@ const Tenders = () => {
           </Button>
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList>
-            <TabsTrigger value="all">All Tenders</TabsTrigger>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="closed">Closed</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTendersByStatus('all').map(renderTenderCard)}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="open" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTendersByStatus('open').map(renderTenderCard)}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="closed" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTendersByStatus('closed').map(renderTenderCard)}
-            </div>
-          </TabsContent>
-        </Tabs>
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="animate-spin h-8 w-8 text-muted-foreground" />
+          </div>
+        ) : tenders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <div className="text-muted-foreground mb-4">No tenders found</div>
+            <Button asChild>
+              <Link to="/create-tender">
+                <FilePlus className="mr-2 h-4 w-4" />
+                Create Your First Tender
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList>
+              <TabsTrigger value="all">All Tenders</TabsTrigger>
+              <TabsTrigger value="open">Open</TabsTrigger>
+              <TabsTrigger value="closed">Closed</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="all" className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTendersByStatus('all').map(renderTenderCard)}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="open" className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTendersByStatus('open').map(renderTenderCard)}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="closed" className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTendersByStatus('closed').map(renderTenderCard)}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       {/* Results Dialog */}

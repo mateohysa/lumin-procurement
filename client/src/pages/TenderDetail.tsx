@@ -26,7 +26,7 @@ const tenderData = {
   title: 'Office Equipment Procurement',
   description: 'Seeking a vendor to supply office equipment including computers, printers, and furniture.',
   category: 'Equipment',
-  status: 'Awarded',
+  status: 'open',
   deadline: '2025-04-30',
   endDate: '2025-05-01',
   budget: '$50,000',
@@ -53,7 +53,8 @@ const TenderDetail = () => {
   // In reality you'd fetch tender details by ID; here we override mock status for open-tender testing
   const numericId = Number(id);
   // Treat IDs below 6 as open tenders for mock
-  const isOpenTender = numericId < 6;
+  console.log(tenderData);
+  const isOpenTender = tenderData.status === 'open';
   const tender = {
     ...tenderData,
     status: numericId < 6 ? 'Open' : tenderData.status,

@@ -128,11 +128,13 @@ export async function findTendersForEvaluator(evaluatorId: string): Promise<ITen
  */
 export async function findOpenTenders(): Promise<ITender[]> {
   try {
-    const now = new Date();
+    // Temporarily removed deadline check to show all open tenders regardless of deadline
     const tenders = await Tender.find({
       status: 'open',
-      deadline: { $gt: now },
+      // deadline: { $gt: now }, // Commenting out to show all open tenders
     });
+    
+    console.log(`Found ${tenders.length} open tenders`);
     return tenders;
   } catch (error) {
     console.error('Error finding open tenders:', error);

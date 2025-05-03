@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,88 +14,72 @@ import {
   Timer,
   Eye,
   Check,
-  Lock
+  Lock,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-
-// Mock tender data
-const tenders = [
-  {
-    id: 1,
-    title: 'Office Equipment Procurement',
-    description: 'Seeking a vendor to supply office equipment including computers, printers, and furniture.',
-    category: 'IT',
-    status: 'Open',
-    deadline: '2025-05-30',
-    budget: '$50,000',
-    organization: 'Ministry of Education',
-    alreadyApplied: true
-  },
-  {
-    id: 2,
-    title: 'IT Services Procurement',
-    description: 'Looking for a provider of IT services, including network maintenance, cybersecurity, and cloud solutions.',
-    category: 'IT',
-    status: 'Open',
-    deadline: '2025-06-15',
-    budget: '$120,000',
-    organization: 'Department of Health',
-    alreadyApplied: false
-  },
-  {
-    id: 3,
-    title: 'Construction Services',
-    description: 'Requesting bids for construction services for a new office building.',
-    category: 'Construction',
-    status: 'Open',
-    deadline: '2025-07-01',
-    budget: '$2,500,000',
-    organization: 'City Council',
-    alreadyApplied: false
-  },
-  {
-    id: 4,
-    title: 'Office Supplies Contract',
-    description: 'Recurring supply of office materials including paper, pens, and other stationery items.',
-    category: 'Supply',
-    status: 'Open',
-    deadline: '2025-05-20',
-    budget: '$15,000',
-    organization: 'Ministry of Finance',
-    alreadyApplied: true
-  },
-  {
-    id: 5,
-    title: 'Networking Equipment',
-    description: 'Procurement of routers, switches, and other networking equipment for a new data center.',
-    category: 'IT',
-    status: 'Open',
-    deadline: '2025-06-10',
-    budget: '$85,000',
-    organization: 'Technology Department',
-    alreadyApplied: false
-  },
-  {
-    id: 6,
-    title: 'Building Renovation',
-    description: 'Renovation of an existing government building, including structural repairs and interior updates.',
-    category: 'Construction',
-    status: 'Open',
-    deadline: '2025-08-15',
-    budget: '$750,000',
-    organization: 'Public Works Department',
-    alreadyApplied: false
-  },
-];
+import { tenderApi } from '@/lib/api-client';
+import { useToast } from '@/hooks/use-toast';
 
 const AvailableTenders = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const isVendor = user?.role === 'vendor';
+  
+  const [tenders, setTenders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchTenders = async () => {
+      try {
+        setLoading(true);
+        const response = await tenderApi.getOpenTenders();
+        console.log('API Response:', response); // Debug: Log the full response
+        
+        // Fix: Extract tenders directly from response.data, not response.data.data
+        const tendersData = response.data || [];
+        console.log('Tenders data:', tendersData); // Debug: Log the tenders data
+        
+        // Map the data to ensure it has the expected fields
+        const formattedTenders = tendersData.map(tender => ({
+          id: tender._id,
+          title: tender.title || 'Untitled Tender',
+          description: tender.description || 'No description provided',
+          category: tender.category || 'Uncategorized',
+          status: tender.status || 'Unknown',
+          deadline: tender.deadline ? new Date(tender.deadline).toLocaleDateString() : 'No deadline',
+          budget: tender.budget ? `$${tender.budget.toLocaleString()}` : 'Budget not specified',
+          // Use createdBy ID as organization for now
+          organization: tender.organization || 'Organization not specified',
+          // Default to false, implement proper check in the future
+          alreadyApplied: tender.alreadyApplied || false
+        }));
+        
+        console.log('Formatted tenders:', formattedTenders); // Debug: Log formatted data
+        setTenders(formattedTenders);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch tenders:', err);
+        setError('Failed to load tenders. Please try again later.');
+        toast({
+          title: 'Error',
+          description: 'Could not load available tenders',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTenders();
+  }, [toast]);
 
   const filteredTendersByCategory = (category: string) => {
     if (category === 'all') return tenders;
-    return tenders.filter(tender => tender.category.toLowerCase() === category.toLowerCase());
+    return tenders.filter(tender => tender.category && tender.category.toLowerCase() === category.toLowerCase());
   };
 
   const renderTenderCard = (tender: any) => (
@@ -166,38 +149,55 @@ const AvailableTenders = () => {
           <p className="text-muted-foreground">Browse and apply for open tenders.</p>
         </div>
 
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList>
-            <TabsTrigger value="all">All Tenders</TabsTrigger>
-            <TabsTrigger value="it">IT Services</TabsTrigger>
-            <TabsTrigger value="construction">Construction</TabsTrigger>
-            <TabsTrigger value="supply">Supply Chain</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="all" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTendersByCategory('all').map(renderTenderCard)}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="it" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTendersByCategory('it').map(renderTenderCard)}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="construction" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTendersByCategory('construction').map(renderTenderCard)}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="supply" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTendersByCategory('supply').map(renderTenderCard)}
-            </div>
-          </TabsContent>
-        </Tabs>
+        {loading ? (
+          <div className="flex justify-center items-center py-10">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="text-center text-red-500 py-10">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+            {error}
+          </div>
+        ) : tenders.length === 0 ? (
+          <div className="text-center py-10 border rounded-lg bg-gray-50">
+            <InfoIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-lg font-medium">No open tenders available</p>
+            <p className="text-sm text-muted-foreground">Check back later for new opportunities</p>
+          </div>
+        ) : (
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList>
+              <TabsTrigger value="all">All Tenders</TabsTrigger>
+              <TabsTrigger value="it">IT Services</TabsTrigger>
+              <TabsTrigger value="construction">Construction</TabsTrigger>
+              <TabsTrigger value="supply">Supply Chain</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="all" className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTendersByCategory('all').map(renderTenderCard)}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="it" className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTendersByCategory('it').map(renderTenderCard)}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="construction" className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTendersByCategory('construction').map(renderTenderCard)}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="supply" className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredTendersByCategory('supply').map(renderTenderCard)}
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </MainLayout>
   );

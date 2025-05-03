@@ -117,7 +117,7 @@ export function DisputeButton({
                 <AlertTitle>Important</AlertTitle>
                 <AlertDescription>
                   Disputes must be filed within {disputeTimeFrameDays} days of the decision date.
-                  You have {getDaysLeft()} days remaining.
+                  You have {getDaysLeft()} day(s) remaining.
                 </AlertDescription>
               </Alert>
               <DisputeForm

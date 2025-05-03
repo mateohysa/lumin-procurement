@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt.js';
+import { verifyToken } from '../utils/jwt';
 
 // Define a custom interface for the JWT payload
 interface JwtPayload {

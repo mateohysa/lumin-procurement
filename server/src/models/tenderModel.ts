@@ -8,9 +8,12 @@ interface ITender extends Document {
   deadline: Date;
   status: 'draft' | 'open' | 'closed' | 'awarded' | 'cancelled';
   createdBy: mongoose.Types.ObjectId;
-  documents: Array<{
-    name: string;
-    url: string;
+  attachments: Array<{
+    fileName: string;
+    fileKey: string;
+    fileUrl: string;
+    fileType: string;
+    fileSize: number;
   }>;
   evaluationCriteria: Array<{
     name: string;
@@ -56,10 +59,13 @@ const tenderSchema = new Schema<ITender>(
       required: true,
       ref: 'User',
     },
-    documents: [
+    attachments: [
       {
-        name: String,
-        url: String,
+        fileName: String,
+        fileKey: String,
+        fileUrl: String,
+        fileType: String,
+        fileSize: Number,
       },
     ],
     evaluationCriteria: [

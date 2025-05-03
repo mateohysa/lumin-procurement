@@ -1,17 +1,16 @@
 import 'dotenv/config';
 // Environment setup
 
-
-
-import { connectDB } from './config/db.config.js';
+import { connectDB } from './config/db.config';
 import express from 'express';
 import cors from 'cors';
-import { authenticateJWT, isVendor, isEvaluator, isProcurementManager } from './middleware/jwtAuth.js';
+import { authenticateJWT, isVendor, isEvaluator, isProcurementManager } from './middleware/jwtAuth';
 
 // Routes
 import loginRoute from './routes/login';
 import registerRoute from './routes/register';
-import tendersRoute from './routes/tenders.js';
+import tendersRoute from './routes/tenders';
+import evaluatorsRoute from './routes/evaluators';
 
 // Connect to MongoDB
 connectDB();
@@ -29,6 +28,8 @@ app.use(cors({
 app.use('/api/login', loginRoute);
 app.use('/api/register', registerRoute);
 app.use('/api/tenders', tendersRoute);
+app.use('/api/evaluators', evaluatorsRoute);
+app.use('/api/evaluators', evaluatorsRoute);
 
 // Protected routes
 app.get('/api/profile', authenticateJWT, (req, res) => {
@@ -70,5 +71,5 @@ app.get('/api/manager/dashboard', authenticateJWT, isProcurementManager, (req, r
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5173;
 app.listen(PORT, () => console.log(`Server running on port: ${PORT}`));

@@ -2,6 +2,8 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { checkAuthenticated } from '../middleware/checkAuth.js';
 import * as tenderService from '../services/tenderService.js';
+import upload from '../middleware/fileUpload.js';
+import * as fileService from '../services/fileService.js';
 
 const router = express.Router();
 
@@ -12,18 +14,20 @@ const router = express.Router();
  */
 router.post(
   '/',
-  checkAuth,
+  checkAuthenticated,
+  upload.array('attachments', 5), // Allow up to 5 file attachments
   [
     body('title').notEmpty().withMessage('Title is required'),
     body('description').notEmpty().withMessage('Description is required'),
     body('category').notEmpty().withMessage('Category is required'),
     body('budget').isNumeric().withMessage('Budget must be a number'),
-    body('deadline').isISO8601().withMessage('Valid deadline date is required'),
+    body('submissionDeadline').isISO8601().withMessage('Valid deadline date is required'),
     body('evaluationCriteria').isArray().withMessage('Evaluation criteria must be an array'),
     body('evaluationCriteria.*.name').notEmpty().withMessage('Criterion name is required'),
     body('evaluationCriteria.*.weight').isNumeric().withMessage('Criterion weight must be a number'),
   ],
   async (req, res) => {
+    console.log(req.body);
     try {
       // Check for validation errors
       const errors = validationResult(req);
@@ -32,16 +36,40 @@ router.post(
       }
 
       // Check if user has appropriate role (assuming user info is in req.user)
-      if (req.user.role !== 'procurement_officer') {
-        return res.status(403).json({ message: 'Only procurement officers can create tenders' });
+      if ( ['procurement_officer','admin'].indexOf(req.user.role) === -1 ) {
+        return res.status(403).json({ message: 'Only procurement officers and admin can create tenders' });
       }
 
-      // Add the user ID as the creator
+      // Process any uploaded files
+      const attachments = [];
+      if (req.files && Array.isArray(req.files)) {
+        for (const file of req.files) {
+          const fileResult = await fileService.uploadFile(
+            file.buffer,
+            file.originalname,
+            file.mimetype
+          );
+          attachments.push({
+            fileName: file.originalname,
+            fileKey: fileResult.key,
+            fileUrl: fileResult.url,
+            fileType: file.mimetype,
+            fileSize: file.size,
+          });
+        }
+      }
+
+      console.log(req.user);
+
+      // Add the user ID as the creator and add attachments
       const tenderData = {
         ...req.body,
         createdBy: req.user.id,
+        attachments: attachments.length > 0 ? attachments : undefined,
       };
 
+      console.log('Tender data:', tenderData);
+      tenderData.deadline = tenderData.submissionDeadline;
       const tender = await tenderService.createTender(tenderData);
       if (!tender) {
         return res.status(500).json({ message: 'Failed to create tender' });
@@ -54,6 +82,27 @@ router.post(
     }
   }
 );
+
+/**
+ * @route   GET /api/tenders/open
+ * @desc    Get all open tenders that vendors can apply to
+ * @access  Private (Vendor)
+ */
+router.get('/open', checkAuthenticated, async (req, res) => {
+  try {
+    const openTenders = await tenderService.findOpenTenders();
+    console.log(`Found ${openTenders.length} open tenders`);
+    
+    // Return tenders directly as an array to match frontend expectations
+    res.status(200).json(openTenders);
+  } catch (error) {
+    console.error('Error in get open tenders route:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to retrieve open tenders' 
+    });
+  }
+});
 
 /**
  * @route   GET /api/tenders
@@ -104,8 +153,8 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', checkAuthenticated, async (req, res) => {
   try {
     // Check if user has appropriate role
-    if (req.user.role !== 'procurement_officer') {
-      return res.status(403).json({ message: 'Only procurement officers can update tenders' });
+    if ( ['procurement_officer','admin'].indexOf(req.user.role) === -1 ) {
+      return res.status(403).json({ message: 'Only procurement officers and admin can create tenders' });
     }
 
     const tender = await tenderService.updateTender(req.params.id, req.body);
@@ -124,11 +173,11 @@ router.put('/:id', checkAuthenticated, async (req, res) => {
  * @desc    Delete a tender
  * @access  Private (Procurement Officers only)
  */
-router.delete('/:id', checkAuth, async (req, res) => {
+router.delete('/:id', checkAuthenticated, async (req, res) => {
   try {
     // Check if user has appropriate role
-    if (req.user.role !== 'procurement_officer') {
-      return res.status(403).json({ message: 'Only procurement officers can delete tenders' });
+    if ( ['procurement_officer','admin'].indexOf(req.user.role) === -1 ) {
+      return res.status(403).json({ message: 'Only procurement officers and admin can create tenders' });
     }
 
     const success = await tenderService.deleteTender(req.params.id);
@@ -141,5 +190,47 @@ router.delete('/:id', checkAuth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+/**
+ * @route   POST /api/tenders/files
+ * @desc    Upload files and get S3 URLs
+ * @access  Private
+ */
+router.post(
+  '/files',
+  checkAuthenticated,
+  upload.array('files', 10), // Allow up to 10 files
+  async (req, res) => {
+    try {
+      // Process any uploaded files
+      const uploadedFiles = [];
+      if (req.files && Array.isArray(req.files)) {
+        for (const file of req.files) {
+          const fileResult = await fileService.uploadFile(
+            file.buffer,
+            file.originalname,
+            file.mimetype
+          );
+          uploadedFiles.push({
+            fileName: file.originalname,
+            fileKey: fileResult.key,
+            fileUrl: fileResult.url,
+            fileType: file.mimetype,
+            fileSize: file.size,
+          });
+        }
+      }
+
+      if (uploadedFiles.length === 0) {
+        return res.status(400).json({ message: 'No files uploaded' });
+      }
+
+      res.status(200).json({ files: uploadedFiles });
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      res.status(500).json({ message: 'Server error during file upload' });
+    }
+  }
+);
 
 export default router;

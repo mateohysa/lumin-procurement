@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from "date-fns";
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/card';
 import { tenderApi } from '@/lib/api-client';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 // Tender categories for select dropdown
 const tenderCategories = [
@@ -89,34 +90,6 @@ const documentTemplates = [
   }
 ];
 
-// Sample evaluators
-const evaluators = [
-  {
-    id: 'js',
-    name: 'John Smith',
-    email: 'john@example.com',
-    department: 'IT'
-  },
-  {
-    id: 'ew',
-    name: 'Emma Wilson',
-    email: 'emma@example.com',
-    department: 'Procurement'
-  },
-  {
-    id: 'mb',
-    name: 'Michael Brown',
-    email: 'michael@example.com',
-    department: 'Finance'
-  },
-  {
-    id: 'as',
-    name: 'Anna Smith',
-    email: 'anna@example.com',
-    department: 'Legal'
-  }
-];
-
 // Form schema type
 interface TenderFormValues {
   title: string;
@@ -145,9 +118,115 @@ const CreateTender = () => {
   const [editingWeight, setEditingWeight] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [evaluators, setEvaluators] = useState<{ id: string, name: string, email: string, department: string }[]>([]);
   const navigate = useNavigate();
   const totalSteps = 5;
   
+  // Fetch evaluators from the database when component loads
+  useEffect(() => {
+    const fetchEvaluators = async () => {
+      try {
+        setLoading(true);
+        console.log('Starting to fetch evaluators...');
+        
+        // Get the API URL and token
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5173/api';
+        const token = localStorage.getItem('token');
+        
+        console.log(`Trying to fetch from: ${API_URL}/evaluators...`);
+        
+        // First try the authenticated endpoint
+        try {
+          if (token) {
+            const response = await axios.get(`${API_URL}/evaluators`, {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            });
+            
+            console.log('Response from authenticated endpoint:', response.data);
+            
+            if (response.data && Array.isArray(response.data)) {
+              const mappedEvaluators = response.data.map(evaluator => ({
+                id: evaluator._id,
+                name: evaluator.name || 'Unknown Name',
+                email: evaluator.email || '',
+                department: evaluator.department || ''
+              }));
+              
+              console.log('Mapped evaluators from authenticated endpoint:', mappedEvaluators);
+              setEvaluators(mappedEvaluators);
+              return; // Exit if successful
+            }
+          } else {
+            console.warn('No token available, skipping authenticated endpoint');
+          }
+        } catch (authError) {
+          console.error('Error fetching from authenticated endpoint:', authError);
+          // Fall through to try the public endpoint
+        }
+        
+        // Try the public endpoint as fallback
+        console.log(`Trying public endpoint: ${API_URL}/users/evaluators-public...`);
+        const publicResponse = await axios.get(`${API_URL}/users/evaluators-public`);
+        
+        console.log('Response from public endpoint:', publicResponse.data);
+        
+        if (publicResponse.data && Array.isArray(publicResponse.data)) {
+          const mappedEvaluators = publicResponse.data.map(evaluator => ({
+            id: evaluator._id,
+            name: evaluator.name || 'Unknown Name',
+            email: evaluator.email || '',
+            department: evaluator.department || ''
+          }));
+          
+          console.log('Mapped evaluators from public endpoint:', mappedEvaluators);
+          setEvaluators(mappedEvaluators);
+          return;
+        }
+        
+        throw new Error('Both endpoints failed or returned invalid data');
+      } catch (error) {
+        console.error('All evaluator fetch attempts failed:', error);
+        
+        // Use fallback static data
+        const staticEvaluators = [
+          {
+            id: 'static-1',
+            name: 'John Smith',
+            email: 'john@example.com',
+            department: 'IT'
+          },
+          {
+            id: 'static-2',
+            name: 'Emma Wilson',
+            email: 'emma@example.com',
+            department: 'Procurement'
+          },
+          {
+            id: 'static-3',
+            name: 'Michael Brown',
+            email: 'michael@example.com',
+            department: 'Finance'
+          }
+        ];
+        
+        console.log('Using fallback static evaluator data');
+        setEvaluators(staticEvaluators);
+        
+        toast({
+          title: 'Error',
+          description: 'Failed to load evaluators from the database. Using fallback data.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvaluators();
+  }, []);
+
   // Steps and their icons
   const steps = [
     { number: 1, title: 'Basic Information', icon: <AlignLeft className="h-5 w-5" /> },
@@ -182,20 +261,22 @@ const CreateTender = () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
+      
       // Format the data for the API
-      const formattedData = {
-        title: data.title,
-        description: data.description,
-        category: data.category === 'other' ? data.customCategory : data.category,
-        budget: parseFloat(data.budget),
-        deadline: data.submissionDeadline,
-        status: 'draft', // Start as draft
-        evaluationCriteria: usePresetCriteria ? 
-          evaluationCriteriaTemplates : 
-          customCriteria.map(c => ({ name: c.name, weight: c.weight })),
-        assignedEvaluators: data.selectedEvaluators,
-        // Add any other necessary fields from the form
-      };
+    const formattedData = {
+      title: data.title,
+      description: data.description,
+      category: data.category === 'other' ? data.customCategory : data.category,
+      budget: parseFloat(data.budget) || 0, // Ensure budget is a number, default to 0 if empty
+      submissionDeadline: data.submissionDeadline ? data.submissionDeadline.toISOString() : undefined, // Format as ISO8601
+      status: 'draft', // Start as draft
+      evaluationCriteria: usePresetCriteria ? 
+        presetCriteria.map(c => ({ name: c.name, weight: c.weight })) : 
+        customCriteria.map(c => ({ name: c.name, weight: c.weight })),
+      assignedEvaluators: data.selectedEvaluators,
+      // Add any other necessary fields from the form
+    };
+    console.log(formattedData.assignedEvaluators);
 
       try {
         setIsSubmitting(true);
@@ -659,29 +740,39 @@ const CreateTender = () => {
                     </p>
                     
                     <div className="space-y-2">
-                      {evaluators.map((evaluator) => (
-                        <div 
-                          key={evaluator.id} 
-                          className="flex items-center justify-between p-3 bg-background rounded-lg border hover:bg-accent/5 cursor-pointer"
-                          onClick={() => toggleEvaluator(evaluator.id)}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
-                              {evaluator.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                            <div>
-                              <div className="font-medium">{evaluator.name}</div>
-                              <div className="text-xs text-muted-foreground">{evaluator.email} • {evaluator.department}</div>
-                            </div>
-                          </div>
-                          <input 
-                            type="checkbox" 
-                            className="h-4 w-4"
-                            checked={selectedEvaluators.includes(evaluator.id)}
-                            onChange={() => toggleEvaluator(evaluator.id)}
-                          />
+                      {loading ? (
+                        <div className="flex justify-center py-6">
+                          <p>Loading evaluators...</p>
                         </div>
-                      ))}
+                      ) : evaluators.length === 0 ? (
+                        <div className="flex justify-center py-6">
+                          <p>No evaluators found in the system.</p>
+                        </div>
+                      ) : (
+                        evaluators.map((evaluator) => (
+                          <div 
+                            key={evaluator.id} 
+                            className="flex items-center justify-between p-3 bg-background rounded-lg border hover:bg-accent/5 cursor-pointer"
+                            onClick={() => toggleEvaluator(evaluator.id)}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+                                {evaluator.name.split(' ').map(n => n[0]).join('')}
+                              </div>
+                              <div>
+                                <div className="font-medium">{evaluator.name}</div>
+                                <div className="text-xs text-muted-foreground">{evaluator.email} • {evaluator.department}</div>
+                              </div>
+                            </div>
+                            <input 
+                              type="checkbox" 
+                              className="h-4 w-4"
+                              checked={selectedEvaluators.includes(evaluator.id)}
+                              onChange={() => toggleEvaluator(evaluator.id)}
+                            />
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                   

@@ -5,9 +5,12 @@ interface ISubmission extends Document {
   vendor: mongoose.Types.ObjectId;
   proposedBudget: number;
   proposal: string;
-  documents: Array<{
-    name: string;
-    url: string;
+  attachments: Array<{
+    fileName: string;
+    fileKey: string;
+    fileUrl: string;
+    fileType: string;
+    fileSize: number;
   }>;
   status: 'pending' | 'approved' | 'rejected' | 'awarded';
   evaluationScores: Array<{
@@ -42,10 +45,13 @@ const submissionSchema = new Schema<ISubmission>(
       type: String,
       required: true,
     },
-    documents: [
+    attachments: [
       {
-        name: String,
-        url: String,
+        fileName: String,
+        fileKey: String,
+        fileUrl: String,
+        fileType: String,
+        fileSize: Number,
       },
     ],
     status: {
