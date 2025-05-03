@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -61,10 +60,30 @@ export const LoginForm = () => {
         });
         navigate(from, { replace: true });
       } else {
-        setLoginError('Invalid email or password. Try one of the demo accounts.');
+        setLoginError('Invalid email or password. Please check your credentials and try again.');
       }
-    } catch (error) {
-      setLoginError('An error occurred during login.');
+    } catch (error: any) {
+      // Handle specific error cases
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        if (error.response.status === 401) {
+          setLoginError('Invalid email or password. Please check your credentials.');
+        } else if (error.response.status === 403) {
+          setLoginError('Your account has been suspended. Please contact support.');
+        } else if (error.response.data && error.response.data.message) {
+          setLoginError(error.response.data.message);
+        } else {
+          setLoginError('Login failed. Please try again later.');
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        setLoginError('No response from server. Please check your internet connection.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        setLoginError('An error occurred during login. Please try again.');
+      }
+      console.error('Login error:', error);
     } finally {
       setIsLoggingIn(false);
     }
@@ -142,7 +161,7 @@ export const LoginForm = () => {
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-muted-foreground">
-          This is a demo with no actual authentication.
+          Please contact support if you're having trouble logging in.
         </p>
       </CardFooter>
     </Card>

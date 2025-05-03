@@ -1,5 +1,5 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import apiClient from '@/lib/api-client';
 
 // Define user roles
 export type UserRole = 'admin' | 'vendor' | 'evaluator';
@@ -25,37 +25,8 @@ interface AuthContextType {
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demo purposes
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    avatar: 'AU',
-  },
-  {
-    id: '2',
-    name: 'Vendor Company',
-    email: 'vendor@example.com',
-    role: 'vendor',
-    avatar: 'VC',
-  },
-  {
-    id: '3',
-    name: 'Evaluator One',
-    email: 'evaluator1@example.com',
-    role: 'evaluator',
-    avatar: 'EO',
-  },
-  {
-    id: '4',
-    name: 'Evaluator Two',
-    email: 'evaluator2@example.com',
-    role: 'evaluator',
-    avatar: 'ET',
-  }
-];
+// API URL - Make sure this points to your backend server
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -64,36 +35,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check for stored user on initial load
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const token = localStorage.getItem('token');
+    
+    if (storedUser && token) {
       setUser(JSON.parse(storedUser));
     }
     setIsLoading(false);
   }, []);
 
-  // Mock login function - in a real app, this would validate against a backend
+  // Real login function that calls the backend API
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const foundUser = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
+    try {
+      const response = await apiClient.post('/login', { email, password });
+      const data = response.data;
+      
+      if (data.success) {
+        // Map the server response to our User interface
+        const userData: User = {
+          id: data.user.id,
+          name: data.user.name || data.user.username || '',
+          email: data.user.email,
+          role: mapServerRoleToClientRole(data.user.role),
+          avatar: data.user.avatar
+        };
+        
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Store token in localStorage (apiClient will use it automatically for future requests)
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        
+        setIsLoading(false);
+        return true;
+      } else {
+        console.error('Login failed:', data.message);
+        setIsLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
       setIsLoading(false);
-      return true;
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
+  };
+  
+  // Helper function to map server roles to client roles
+  const mapServerRoleToClientRole = (serverRole: string): UserRole => {
+    switch (serverRole) {
+      case 'ProcurementManager':
+        return 'admin';
+      case 'Vendor':
+        return 'vendor';
+      case 'Evaluator':
+        return 'evaluator';
+      default:
+        return 'vendor'; // Default fallback
+    }
   };
 
   // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // Optional: Call logout endpoint if you have one
+      // await apiClient.post('/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear user state and local storage regardless of API call result
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+    }
   };
 
   return (

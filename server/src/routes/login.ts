@@ -1,54 +1,68 @@
-import { Router, Request, Response, json } from "express";
-import { PassportStatic } from "passport";
-import { checkNotAuthenticated } from "../middleware/checkAuth.js";
+import { Router, Request, Response } from "express";
+import User, { UserDocument } from "../models/userModel.js";
+import bcrypt from "bcryptjs";
+import { generateToken } from "../utils/jwt.js";
 
-// :/login
-export default function loginRoute(passport: PassportStatic) {
-  const route = Router();
-  route.use(json());
+const loginRoute = Router();
 
-  // Route to check if user is already logged in
-  route.get('/', async (req: Request, res: Response) => {
-    if (req.isAuthenticated()) {
-      const { username, email, role, name, avatar, _id } = req.user as Express.User;
-      res.json({ 
-        success: true,
-        message: 'User is authenticated',
-        user: { username, email, role, name, avatar, _id }
-      });
-    } else {
-      res.json({ 
-        success: false, 
-        message: 'User is not authenticated' 
+// Route to handle login
+loginRoute.post('/', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
       });
     }
-  });
 
-  // Handle login attempts
-  route.post('/', checkNotAuthenticated, (req, res, next) => {
-    console.log("Login attempt for user:", req.body.username);
-    res.header("Access-Control-Allow-Origin", 'http://localhost:5173');
-    return next();
-  }, passport.authenticate('local', { 
-    failureMessage: true,
-    failureRedirect: '/login/failed'
-  }), (req: Request, res: Response) => {
-    const { username, email, role, name, avatar, _id } = req.user as Express.User;
-    res.status(200).json({
+    // Find the user by email instead of username
+    const user = await User.findOne({ email }) as UserDocument;
+    
+    // Check if user exists
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Compare passwords
+    const isMatch = await bcrypt.compare(password, user.password);
+    
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Generate JWT token
+    const token = generateToken(user);
+
+    // Return user data and token
+    return res.status(200).json({
       success: true,
       message: 'Login successful',
-      user: { username, email, role, name, avatar, _id }
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        avatar: user.avatar
+      }
     });
-  });
-
-  // Handle failed login attempts
-  route.get('/failed', (req: Request, res: Response) => {
-    res.status(401).json({
+  } catch (error) {
+    console.error('Login error:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Login unsuccessful',
-      error: 'Invalid credentials'
+      message: 'Server error during login'
     });
-  });
+  }
+});
 
-  return route;
-}
+export default loginRoute;

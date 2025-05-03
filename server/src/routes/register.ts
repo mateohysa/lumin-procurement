@@ -1,8 +1,8 @@
 import { Router, Request, Response, json } from "express";
-import { insertUser } from "../services/user.service.js";
+import { insertUser } from "../services/user.service";
 import bcrypt from 'bcryptjs';
-import { UserDtos } from "../models/userModel.js";
-import { checkNotAuthenticated } from "../middleware/checkAuth.js";
+import { UserDtos} from "../models/userModel";
+import { checkNotAuthenticated } from "../middleware/checkAuth";
 
 // :/register
 
@@ -15,15 +15,39 @@ type RegisterPostRequest = Request<{}, {}, UserDtos> //we've written the req.bod
 route.post('/', async (req: RegisterPostRequest, res: Response) => {
   //due to the urlencoded middleware, we can immediately use req.body.<insert name of input here>
   try {
+    // Validate that email is provided
+    if (!req.body.email) {
+      return res.status(400).send({
+        success: false,
+        message: 'Email is required',
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(req.body.password, 10); //10 is how many times that hash is hashed from what I understand
-    const user = { username: req.body.username, password: hashedPassword, role: req.body.role };
+    
+    // Use email for username if username is not provided
+    const username = req.body.email;
+    
+    const user = { 
+      username: username, 
+      email: req.body.email,
+      password: hashedPassword, 
+      role: req.body.role,
+      name: req.body.name
+    };
+    
     const success = await insertUser(user);
     if (success) {
       console.log('Successfully added user:', user);
       res.status(201).send({ // 201 Created for successful resource creation
         success: true,
         message: 'User successfully added',
-        data: user, // Include the created user data
+        data: {
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          name: user.name
+        }, // Include the created user data (excluding password)
       });
     }
     else
