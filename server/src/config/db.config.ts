@@ -26,6 +26,6 @@ export async function disconnectDatabase(): Promise<void> {
   }
 }
 
-connectDB();
+// connectDB();
 
 // export default mongoose.connection;

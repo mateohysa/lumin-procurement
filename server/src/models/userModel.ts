@@ -1,10 +1,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 interface IUser extends Document {
-  username: string;
+  // username: string;
   password: string;
-  email?: string;
-  role: 'ProcurementManager' | 'Vendor' | 'Evaluator';
+  email: string;
+  role: 'procurement_manager' | 'vendor' | 'evaluator' | 'admin';
   name?: string;
   avatar?: string;
   createdAt: Date;
@@ -13,11 +13,11 @@ interface IUser extends Document {
 
 const userSchema = new Schema<IUser>(
   {
-    username: {
-      type: String,
-      required: true,
-      unique: true,
-    },
+    // username: {
+    //   type: String,
+    //   required: true,
+    //   unique: true,
+    // },
     password: {
       type: String,
       required: true,
@@ -32,8 +32,8 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['ProcurementManager', 'Vendor', 'Evaluator'],
-      default: 'Vendor',
+      enum: ['procurement_manager', 'vendor', 'evaluator', 'admin'],
+      default: 'vendor',
     },
     avatar: {
       type: String,

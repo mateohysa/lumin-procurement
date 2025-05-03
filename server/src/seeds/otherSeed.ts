@@ -1,5 +1,3 @@
-
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import User from '../models/userModel';
 import Tender from '../models/tenderModel';
@@ -7,6 +5,7 @@ import Submission from '../models/submissionModel';
 import Evaluation from '../models/evaluationModel';
 import Dispute from '../models/disputeModel';
 import {connectDB} from '../config/db.config';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -72,7 +71,7 @@ const tenders = [
       'Must provide training for staff',
       'Must be energy efficient'
     ],
-    status: 'Open',
+    status: 'open',
     createdAt: '2025-04-01',
   },
   {
@@ -87,7 +86,7 @@ const tenders = [
       'Must complete work within 45 days',
       'Must be licensed and insured'
     ],
-    status: 'Closed',
+    status: 'closed',
     createdAt: '2025-03-15',
   },
   {
@@ -102,7 +101,7 @@ const tenders = [
       'Must include quarterly security assessments',
       'Must have experience with government clients'
     ],
-    status: 'Open',
+    status: 'open',
     createdAt: '2025-04-10',
   },
   {
@@ -117,7 +116,7 @@ const tenders = [
       'Must have experience in the industry',
       'Must include creative development'
     ],
-    status: 'Open',
+    status: 'open',
     createdAt: '2025-04-05',
   },
 ];
@@ -133,7 +132,13 @@ const importData = async () => {
     await Dispute.deleteMany();
 
     // Insert users
-    const createdUsers = await User.insertMany(users);
+    const usersPromise = users.map( async (u) => {
+      const password = await bcrypt.hash(u.password, 10);
+      return {...u, password};
+    });
+    const usersResolve = await Promise.all(usersPromise);
+
+    const createdUsers = await User.insertMany(usersResolve);
     
     // Get user IDs by role for reference
     const adminId = createdUsers[0]._id;
