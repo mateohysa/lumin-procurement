@@ -135,17 +135,6 @@ export const LoginForm = () => {
               )}
             />
             
-            <div className="text-sm">
-              <h3 className="font-medium mb-2">Demo Accounts:</h3>
-              <div className="text-muted-foreground space-y-1">
-                <p>- admin@example.com (Admin)</p>
-                <p>- vendor@example.com (Vendor)</p>
-                <p>- evaluator1@example.com (Evaluator)</p>
-                <p>- evaluator2@example.com (Evaluator)</p>
-                <p className="mt-1 italic">Any password will work for these demo accounts</p>
-              </div>
-            </div>
-            
             <Button type="submit" className="w-full mt-4" disabled={isLoggingIn}>
               {isLoggingIn ? (
                 <>Logging in...</>

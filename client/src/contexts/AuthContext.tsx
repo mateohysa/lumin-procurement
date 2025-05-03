@@ -20,6 +20,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
+  refreshUserData: () => Promise<void>;
 }
 
 // Create the auth context
@@ -32,18 +33,107 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Function to map server roles to client roles
+  const mapServerRoleToClientRole = (serverRole: string): UserRole => {
+    // Convert to lowercase for case-insensitive comparison
+    const role = serverRole.toLowerCase();
+    
+    if (role.includes('manager') || role.includes('admin') || role === 'procurementmanager') {
+      return 'admin';
+    } else if (role.includes('vendor')) {
+      return 'vendor';
+    } else if (role.includes('evaluator')) {
+      return 'evaluator';
+    } else {
+      console.warn(`Unknown role: ${serverRole}, defaulting to vendor`);
+      return 'vendor'; // Default fallback
+    }
+  };
+
+  // Function to validate token and fetch current user data
+  const validateSession = async (): Promise<boolean> => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return false;
+      }
+
+      // Make a request to validate token and get fresh user data
+      const response = await apiClient.get('/profile');
+      const data = response.data;
+
+      if (data.success && data.user) {
+        const userData: User = {
+          id: data.user.id || data.user._id,
+          name: data.user.name || data.user.username || '',
+          email: data.user.email,
+          role: mapServerRoleToClientRole(data.user.role),
+          avatar: data.user.avatar
+        };
+
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        return true;
+      } else {
+        // Clean up invalid session
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return false;
+      }
+    } catch (error) {
+      console.error('Session validation error:', error);
+      // Clean up invalid session
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      return false;
+    }
+  };
+
+  // Function to refresh user data from the server
+  const refreshUserData = async (): Promise<void> => {
+    try {
+      const success = await validateSession();
+      if (!success) {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
   // Check for stored user on initial load
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const initializeAuth = async () => {
+      setIsLoading(true);
+      try {
+        // First try to validate the token and get fresh user data
+        const isValid = await validateSession();
+        
+        // If validation fails, check if we have stored user data
+        if (!isValid) {
+          const storedUser = localStorage.getItem('user');
+          const token = localStorage.getItem('token');
+          
+          if (storedUser && token) {
+            // We have stored data, but token is invalid
+            // Clear everything
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+          }
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
-  // Real login function that calls the backend API
+  // Login function that calls the backend API
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
@@ -52,14 +142,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = response.data;
       
       if (data.success) {
+        console.log('Server response user data:', data.user); // Debug log
+        
         // Map the server response to our User interface
         const userData: User = {
-          id: data.user.id,
-          name: data.user.name || data.user.username || '',
+          id: data.user.id || data.user._id,
+          name: data.user.name || '', // Ensure name is captured from response
           email: data.user.email,
           role: mapServerRoleToClientRole(data.user.role),
-          avatar: data.user.avatar
+          avatar: data.user.avatar // Ensure avatar is captured
         };
+        
+        console.log('Mapped user data:', userData); // Debug log
         
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
@@ -80,20 +174,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Login error:', error);
       setIsLoading(false);
       return false;
-    }
-  };
-  
-  // Helper function to map server roles to client roles
-  const mapServerRoleToClientRole = (serverRole: string): UserRole => {
-    switch (serverRole) {
-      case 'ProcurementManager':
-        return 'admin';
-      case 'Vendor':
-        return 'vendor';
-      case 'Evaluator':
-        return 'evaluator';
-      default:
-        return 'vendor'; // Default fallback
     }
   };
 
@@ -119,7 +199,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         isAuthenticated: !!user,
-        isLoading
+        isLoading,
+        refreshUserData
       }}
     >
       {children}
