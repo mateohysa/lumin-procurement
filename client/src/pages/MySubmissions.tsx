@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -47,6 +46,17 @@ const submissions = [
 ];
 
 const MySubmissions = () => {
+  const [localDisputes, setLocalDisputes] = useState<any[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('localDisputes') || '[]');
+      setLocalDisputes(stored);
+    } catch {
+      setLocalDisputes([]);
+    }
+  }, []);
+
   return (
     <MainLayout>
       <div className="container mx-auto py-6">
@@ -55,7 +65,7 @@ const MySubmissions = () => {
             <h1 className="text-2xl font-bold">My Submissions</h1>
             <p className="text-muted-foreground">Track and manage your tender submissions</p>
           </div>
-          <Button asChild>
+          <Button variant="outline" asChild>
             <Link to="/available-tenders">Browse Tenders</Link>
           </Button>
         </div>
@@ -76,62 +86,62 @@ const MySubmissions = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {submissions.map((submission) => (
-                  <TableRow key={submission.id}>
-                    <TableCell className="font-medium">{submission.tenderTitle}</TableCell>
-                    <TableCell>{submission.submissionDate}</TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          submission.status === 'Won' 
-                            ? "default" 
-                            : submission.status === 'Rejected' 
-                              ? "destructive" 
-                              : "secondary"
-                        }
-                      >
-                        {submission.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center">
-                        <FileText className="h-4 w-4 mr-1 text-muted-foreground" /> 
-                        {submission.documents}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to={`/submissions/${submission.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
-                        </Button>
-                        
-                        {submission.status === 'Submitted' && (
+                {submissions.map((submission) => {
+                  const hasDispute = localDisputes.some(d => d.tenderId === submission.tenderId && d.disputeType === 'rejection');
+                  return (
+                    <TableRow key={submission.id}>
+                      <TableCell className="font-medium">{submission.tenderTitle}</TableCell>
+                      <TableCell>{submission.submissionDate}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            submission.status === 'Won' 
+                              ? "default" 
+                              : submission.status === 'Rejected' 
+                                ? "destructive" 
+                                : "secondary"
+                          }
+                        >
+                          {submission.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center">
+                          <FileText className="h-4 w-4 mr-1 text-muted-foreground" /> 
+                          {submission.documents}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" asChild>
-                            <Link to={`/update-submission/${submission.id}`}>
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
+                            <Link to={`/submissions/${submission.id}`}>
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
                             </Link>
                           </Button>
-                        )}
-                        
-                        {submission.status === 'Rejected' && (
-                          <DisputeButton
-                            tenderId={submission.tenderId}
-                            tenderTitle={submission.tenderTitle}
-                            tenderEndDate={submission.rejectionDate || submission.submissionDate}
-                            disputeTimeFrameDays={3}
-                            disputeType="rejection"
-                            variant="secondary"
-                            size="sm"
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          
+                          {submission.status === 'Rejected' && (
+                            hasDispute ? (
+                              <Button variant="outline" size="sm" disabled>
+                                Disputed
+                              </Button>
+                            ) : (
+                              <DisputeButton
+                                tenderId={submission.tenderId}
+                                tenderTitle={submission.tenderTitle}
+                                tenderEndDate={submission.rejectionDate || submission.submissionDate}
+                                disputeTimeFrameDays={3}
+                                disputeType="rejection"
+                                variant="outline"
+                                size="sm"
+                              />
+                            )
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

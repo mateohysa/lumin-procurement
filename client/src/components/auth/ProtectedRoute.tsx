@@ -24,8 +24,15 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
   
   // If roles are specified and user doesn't have required role
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Redirect to a forbidden page or dashboard based on their role
-    return <Navigate to="/forbidden" replace />;
+    // Redirect vendor/admin/evaluator to their dashboard or list page
+    const fallbackPath = user.role === 'vendor'
+      ? '/available-tenders'
+      : user.role === 'admin'
+      ? '/tenders'
+      : user.role === 'evaluator'
+      ? '/my-evaluations'
+      : '/';
+    return <Navigate to={fallbackPath} replace />;
   }
   
   // Otherwise render children

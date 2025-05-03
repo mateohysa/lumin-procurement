@@ -73,7 +73,7 @@ const TenderDetail = () => {
         <div className="flex flex-wrap gap-3 justify-between items-start mb-6">
           <div>
             <Button variant="outline" size="sm" className="mb-2" asChild>
-              <Link to="/tenders">
+              <Link to={isVendor ? '/available-tenders' : '/tenders'}>
                 Back to Tenders
               </Link>
             </Button>

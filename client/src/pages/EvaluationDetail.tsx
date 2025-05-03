@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -58,9 +57,14 @@ const evaluationResultData = {
 
 const EvaluationDetail = () => {
   const { id } = useParams();
-  
-  // Use mock data for now
-  const evaluation = evaluationResultData;
+  // Static mock evaluations based on ID (fallback to default mock)
+  const staticEvaluations: Record<string, typeof evaluationResultData> = {
+    'E-001': { ...evaluationResultData, id: 'E-001', tenderId: 'T-2023-38', tenderTitle: 'Website Redesign Project', vendorName: 'Digital Solutions Ltd' },
+    'E-002': { ...evaluationResultData, id: 'E-002', tenderId: 'T-2023-37', tenderTitle: 'Network Infrastructure Upgrade', vendorName: 'NetTech Systems' },
+    'E-003': { ...evaluationResultData, id: 'E-003', tenderId: 'T-2023-36', tenderTitle: 'Office Supplies Procurement', vendorName: 'Office Essentials Inc.' },
+    'E-004': { ...evaluationResultData, id: 'E-004', tenderId: 'T-2023-35', tenderTitle: 'Staff Training Services', vendorName: 'Learning Solutions Group' },
+  };
+  const evaluation = id && staticEvaluations[id] ? staticEvaluations[id] : evaluationResultData;
   
   // Function to determine color based on score
   const getScoreColor = (score: number) => {
@@ -111,7 +115,7 @@ const EvaluationDetail = () => {
             </div>
             <h1 className="text-2xl font-bold">Evaluation Results: {evaluation.tenderTitle}</h1>
             <p className="text-muted-foreground mt-1">
-              Vendor: {evaluation.vendorName} | Evaluation ID: {evaluation.id}
+              Vendor: {evaluation.vendorName}
             </p>
           </div>
           
@@ -119,10 +123,6 @@ const EvaluationDetail = () => {
             <Button variant="outline" size="sm">
               <Printer className="h-4 w-4 mr-2" />
               Print Evaluation
-            </Button>
-            <Button variant="outline" size="sm">
-              <FileDown className="h-4 w-4 mr-2" />
-              Export PDF
             </Button>
           </div>
         </div>
@@ -209,9 +209,14 @@ const EvaluationDetail = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {/* Vendor shown above to avoid duplication */}
                   <div>
-                    <div className="text-sm text-muted-foreground">Vendor</div>
-                    <div className="font-medium">{evaluation.vendorName}</div>
+                    <div className="text-sm text-muted-foreground">Submission ID</div>
+                    <div className="font-medium">{evaluation.submissionId}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Evaluation ID</div>
+                    <div className="font-medium">{evaluation.id}</div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -250,53 +255,6 @@ const EvaluationDetail = () => {
                   </div>
                 </div>
               </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Score Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {evaluation.criteriaScores.map((criterion) => (
-                    <div key={criterion.id}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm">{criterion.name}</span>
-                        <span className="text-sm font-medium">{criterion.score.toFixed(1)}/5</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-full bg-slate-100 rounded-full h-2.5">
-                          <div 
-                            className={`h-2.5 rounded-full ${getScoreColor(criterion.score)}`}
-                            style={{ width: `${criterion.score * 20}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-6 pt-6 border-t">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Overall Weighted Score</span>
-                    <span className="text-lg font-bold">{evaluation.weightedScore.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center mt-2">
-                    <div className="w-full bg-slate-100 rounded-full h-3">
-                      <div 
-                        className={`h-3 rounded-full ${getScoreColor(evaluation.weightedScore)}`}
-                        style={{ width: `${evaluation.weightedScore * 20}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline" size="sm" className="w-full">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Detailed Analytics
-                </Button>
-              </CardFooter>
             </Card>
           </div>
         </div>

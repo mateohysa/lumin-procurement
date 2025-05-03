@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -149,8 +148,8 @@ const ApplyTender = () => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Button variant="outline" size="sm" asChild>
-                <Link to={`/tenders/${id}`}>
-                  Back to Tender Details
+                <Link to="/available-tenders">
+                  Back to Tenders
                 </Link>
               </Button>
               <Badge>{tender.status}</Badge>
