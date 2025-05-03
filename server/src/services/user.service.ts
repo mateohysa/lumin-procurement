@@ -1,6 +1,6 @@
-import User, { UserDto, UserDocument } from '../models/userModel.js'; // Adjust the path as needed
+import User, { UserRegisterDto, UserDocument } from '../models/userModel.js'; // Adjust the path as needed
 
-export async function insertUser(user: UserDto): Promise<boolean> {
+export async function insertUser(user: UserRegisterDto): Promise<boolean> {
   try {
     const newUser = new User(user);
     const savedUser = await newUser.save();

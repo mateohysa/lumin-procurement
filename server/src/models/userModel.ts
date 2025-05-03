@@ -49,4 +49,4 @@ const User = mongoose.model<IUser>('User', userSchema);
 export default  User;
 export { IUser };
 export type UserDocument = IUser;
-export type UserDtos = Pick<IUser,  'email' | 'role' | 'name' | 'password'>;
+export type UserRegisterDto = Pick<IUser,  'email' | 'role' | 'name' | 'password'>; // Ky eshte vetem objekti per register
