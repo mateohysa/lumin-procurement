@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -24,79 +23,30 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Mock data
-const completedEvaluations = [
-  {
-    id: 'E-001',
-    tender: {
-      id: 'T-2023-38',
-      title: 'Website Redesign Project'
-    },
-    vendor: 'Digital Solutions Ltd',
-    completedDate: '2025-04-28',
-    score: 4.2,
-    status: 'completed'
-  },
-  {
-    id: 'E-002',
-    tender: {
-      id: 'T-2023-37',
-      title: 'Network Infrastructure Upgrade'
-    },
-    vendor: 'NetTech Systems',
-    completedDate: '2025-04-25',
-    score: 3.8,
-    status: 'completed'
-  },
-  {
-    id: 'E-003',
-    tender: {
-      id: 'T-2023-36',
-      title: 'Office Supplies Procurement'
-    },
-    vendor: 'Office Essentials Inc.',
-    completedDate: '2025-04-20',
-    score: 4.5,
-    status: 'completed'
-  },
-  {
-    id: 'E-004',
-    tender: {
-      id: 'T-2023-35',
-      title: 'Staff Training Services'
-    },
-    vendor: 'Learning Solutions Group',
-    completedDate: '2025-04-15',
-    score: 4.0,
-    status: 'completed'
-  }
+// Initial static completed evaluations
+const initialCompleted = [
+  { id: 'E-001', tender: { id: 'T-2023-38', title: 'Website Redesign Project' }, vendor: 'Digital Solutions Ltd', completedDate: '2025-04-28', score: 4.2, status: 'completed' },
+  { id: 'E-002', tender: { id: 'T-2023-37', title: 'Network Infrastructure Upgrade' }, vendor: 'NetTech Systems', completedDate: '2025-04-25', score: 3.8, status: 'completed' },
+  { id: 'E-003', tender: { id: 'T-2023-36', title: 'Office Supplies Procurement' }, vendor: 'Office Essentials Inc.', completedDate: '2025-04-20', score: 4.5, status: 'completed' },
+  { id: 'E-004', tender: { id: 'T-2023-35', title: 'Staff Training Services' }, vendor: 'Learning Solutions Group', completedDate: '2025-04-15', score: 4.0, status: 'completed' }
 ];
 
 const CompletedEvaluations = () => {
-  const renderStars = (score: number) => {
-    const fullStars = Math.floor(score);
-    const hasHalfStar = score - fullStars >= 0.5;
-    
-    return (
-      <div className="flex items-center">
-        {[...Array(fullStars)].map((_, i) => (
-          <Star key={`full-${i}`} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-        ))}
-        {hasHalfStar && (
-          <div className="relative">
-            <Star className="h-4 w-4 text-muted" />
-            <div className="absolute inset-0 overflow-hidden w-1/2">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            </div>
-          </div>
-        )}
-        {[...Array(5 - fullStars - (hasHalfStar ? 1 : 0))].map((_, i) => (
-          <Star key={`empty-${i}`} className="h-4 w-4 text-muted" />
-        ))}
-        <span className="ml-2 text-sm">{score.toFixed(1)}</span>
-      </div>
-    );
-  };
+  // Load and persist completed list from localStorage
+  const [completedList, setCompletedList] = React.useState<typeof initialCompleted>([]);
+  React.useEffect(() => {
+    const stored = localStorage.getItem('completedEvaluations');
+    if (stored) {
+      setCompletedList(JSON.parse(stored));
+    } else {
+      localStorage.setItem('completedEvaluations', JSON.stringify(initialCompleted));
+      setCompletedList(initialCompleted);
+    }
+  }, []);
+
+  const renderStars = (score: number) => (
+    <span className="text-sm font-medium">{`${score.toFixed(1)}/5`}</span>
+  );
   
   return (
     <MainLayout>
@@ -124,11 +74,6 @@ const CompletedEvaluations = () => {
                 <SelectItem value="quarter">This Quarter</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Button variant="outline" size="sm" className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              More Filters
-            </Button>
           </div>
         </div>
         
@@ -146,7 +91,6 @@ const CompletedEvaluations = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Tender</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead>Completed On</TableHead>
@@ -155,9 +99,8 @@ const CompletedEvaluations = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {completedEvaluations.map(evaluation => (
+                {completedList.map(evaluation => (
                   <TableRow key={evaluation.id}>
-                    <TableCell className="font-medium">{evaluation.id}</TableCell>
                     <TableCell>{evaluation.tender.title}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -184,7 +127,7 @@ const CompletedEvaluations = () => {
               </TableBody>
             </Table>
             
-            {completedEvaluations.length === 0 && (
+            {completedList.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8">
                 <FileText className="h-12 w-12 text-muted-foreground mb-2" />
                 <h3 className="text-lg font-medium">No completed evaluations</h3>

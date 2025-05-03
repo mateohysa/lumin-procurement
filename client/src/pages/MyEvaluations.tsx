@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,8 +24,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
-// Mock data
-const evaluations = [
+// Initial mock pending evaluations
+const initialPending = [
   {
     id: 'E-101',
     tender: {
@@ -67,6 +66,18 @@ const evaluations = [
 
 const MyEvaluations = () => {
   const { toast } = useToast();
+  
+  // Load and persist pending list from localStorage
+  const [pendingList, setPendingList] = React.useState<typeof initialPending>([]);
+  React.useEffect(() => {
+    const stored = localStorage.getItem('pendingEvaluations');
+    if (stored) {
+      setPendingList(JSON.parse(stored));
+    } else {
+      localStorage.setItem('pendingEvaluations', JSON.stringify(initialPending));
+      setPendingList(initialPending);
+    }
+  }, []);
   
   const getPriorityBadge = (priority: string) => {
     switch(priority) {
@@ -150,7 +161,7 @@ const MyEvaluations = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {evaluations.map(evaluation => (
+                {pendingList.map(evaluation => (
                   <TableRow key={evaluation.id}>
                     <TableCell className="font-medium">{evaluation.id}</TableCell>
                     <TableCell>{evaluation.tender.title}</TableCell>
@@ -184,7 +195,7 @@ const MyEvaluations = () => {
               </TableBody>
             </Table>
             
-            {evaluations.length === 0 && (
+            {pendingList.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8">
                 <CheckCircle className="h-12 w-12 text-muted-foreground mb-2" />
                 <h3 className="text-lg font-medium">No pending evaluations</h3>

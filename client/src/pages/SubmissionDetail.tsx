@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -95,11 +94,11 @@ const SubmissionDetail = () => {
   const isVendor = user?.role === 'vendor';
   
   const backLinkDestination = isVendor 
-    ? '/available-tenders' 
+    ? '/my-submissions' 
     : `/tenders/${submission.tenderId}/submissions`;
   
   const backLinkText = isVendor
-    ? 'Back to Available Tenders'
+    ? 'Back to My Submissions'
     : 'Back to Submissions List';
   
   return (

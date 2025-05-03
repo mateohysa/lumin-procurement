@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -74,6 +73,26 @@ export function DisputeForm({
         disputeType,
         createdAt: new Date().toISOString(),
       });
+      
+      // Save dispute locally so it appears in My Disputes and updates buttons
+      try {
+        const storageKey = 'localDisputes';
+        const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        existing.push({
+          id: `local-${Date.now()}`,
+          tenderId,
+          tenderTitle,
+          vendorId: user?.id,
+          vendorName: user?.name,
+          reason: values.reason,
+          status: 'pending',
+          disputeType,
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem(storageKey, JSON.stringify(existing));
+        // Notify other components that local disputes have been updated
+        window.dispatchEvent(new Event('localDisputesUpdated'));
+      } catch {}
       
       toast({
         title: "Dispute submitted",

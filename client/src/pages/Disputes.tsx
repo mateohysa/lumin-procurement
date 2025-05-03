@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { DisputesList, type Dispute } from '@/components/disputes/DisputesList';
@@ -50,21 +49,38 @@ const mockDisputes: Dispute[] = [
 const Disputes = () => {
   const { user } = useAuth();
   const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [localDisputes, setLocalDisputes] = useState<Dispute[]>([]);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("all");
   
-  useEffect(() => {
-    // In a real application, this would be an API call
-    // Filter disputes based on user role
-    if (user?.role === 'vendor') {
-      // Vendors only see their own disputes
-      setDisputes(mockDisputes.filter(dispute => dispute.vendorId === user.id));
-    } else {
-      // Admins see all disputes
-      setDisputes(mockDisputes);
+  // Load localStorage disputes and merge with mock data
+  const loadLocalDisputes = () => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('localDisputes') || '[]');
+      setLocalDisputes(stored);
+    } catch {
+      setLocalDisputes([]);
     }
-  }, [user]);
+  };
+
+  useEffect(() => {
+    // subscribe to updates from DisputeForm
+    window.addEventListener('localDisputesUpdated', loadLocalDisputes);
+    loadLocalDisputes();
+    return () => window.removeEventListener('localDisputesUpdated', loadLocalDisputes);
+  }, []);
+
+  useEffect(() => {
+    // Combine remote and local disputes
+    let remote = user?.role === 'vendor'
+      ? mockDisputes.filter(d => d.vendorId === user.id)
+      : mockDisputes;
+    let local = user?.role === 'vendor'
+      ? localDisputes.filter(d => d.vendorId === user.id)
+      : localDisputes;
+    setDisputes([...remote, ...local]);
+  }, [user, localDisputes]);
 
   const handleViewDispute = (dispute: Dispute) => {
     setSelectedDispute(dispute);

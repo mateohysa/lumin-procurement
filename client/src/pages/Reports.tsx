@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -507,7 +506,7 @@ export default function Reports() {
                         <TableCell>{report.winningVendor}</TableCell>
                         <TableCell>v{report.version}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-2 justify-end">
                             <Button
                               variant="outline"
                               size="sm"

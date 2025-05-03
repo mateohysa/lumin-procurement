@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -103,6 +102,23 @@ const EvaluationForm = () => {
         title: "Evaluation submitted",
         description: "Your evaluation has been submitted successfully",
       });
+      
+      // Update localStorage: remove from pending and add to completed
+      // Remove current evaluation from pending list
+      const pending = JSON.parse(localStorage.getItem('pendingEvaluations') || '[]');
+      const updatedPending = pending.filter((e: any) => e.id !== id);
+      localStorage.setItem('pendingEvaluations', JSON.stringify(updatedPending));
+      // Add to completed evaluations list
+      const completed = JSON.parse(localStorage.getItem('completedEvaluations') || '[]');
+      const newEntry = {
+        id: evaluation.id,
+        tender: { id: evaluation.tenderId, title: evaluation.tenderTitle },
+        vendor: evaluation.vendorName,
+        completedDate: new Date().toLocaleDateString(),
+        score: parseFloat(getTotalScore()),
+        status: 'completed'
+      };
+      localStorage.setItem('completedEvaluations', JSON.stringify([...completed, newEntry]));
       
       setIsSubmitting(false);
       navigate('/my-evaluations');
