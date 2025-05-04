@@ -37,9 +37,8 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-white font-bold">
-            SP
+          <img src={"logo.png"} alt="logo" className="w-8 h-8" />
           </div>
-          <div className="font-semibold text-sidebar-foreground">Smart Procurement</div>
         </div>
       </SidebarHeader>
 

@@ -261,11 +261,70 @@ router.get(
   checkAuthenticated,
   async (req: Request, res: Response) => {
     try {
-      // Fetch submissions for the tender
       const tenderId = req.params.id;
+      const user = req.user as any;
+      // Fetch tender to retrieve assigned evaluators if needed
+      const tender = await tenderService.findTenderById(tenderId);
+      if (!tender) {
+        return res.status(404).json({ message: 'Tender not found' });
+      }
+      // Restrict admin and evaluators from viewing submissions when tender is still open
+      if (tender.status === 'open' && (user.role === 'admin' || user.role === 'evaluator')) {
+        return res.status(403).json({ message: 'Not allowed to view submissions while tender is open' });
+      }
+      // Fetch submissions for this tender
       const submissions = await tenderService.findSubmissionsByTenderId(tenderId);
 
-      return res.status(200).json(submissions);
+      // Map submissions to include submissionDate, mock evaluator scores, averageScore, and computed rank
+      const criteriaNames = ['technical', 'financial', 'experience', 'implementation'];
+      const enriched = submissions.map((s, idx) => {
+        // Convert to plain object
+        const obj: any = typeof s.toObject === 'function' ? s.toObject() : { ...s };
+        // Map createdAt to submissionDate
+        obj.submissionDate = s.createdAt.toISOString();
+        // Build mock evaluations for each assigned evaluator
+        const evaluators: any[] = Array.isArray(tender.assignedEvaluators)
+          ? tender.assignedEvaluators as any[]
+          : [];
+        const mockEvaluations = evaluators.map((ev, evIdx) => {
+          const scores: Record<string, number> = {};
+          // Assign static scores per criteria, varying by submission and evaluator index
+          criteriaNames.forEach((c) => {
+            const baseMap: Record<string, number> = {
+              technical: 80,
+              financial: 85,
+              experience: 90,
+              implementation: 95,
+            };
+            const base = baseMap[c] || 80;
+            scores[c] = base - evIdx * 5 - idx * 2;
+          });
+          const totalScore = Object.values(scores).reduce((sum, v) => sum + v, 0);
+          const overallScore = totalScore / criteriaNames.length;
+          return {
+            evaluatorId: ev._id,
+            evaluatorName: ev.name,
+            scores,
+            comments: `Mock comment for submission ${idx + 1} by evaluator ${ev.name}`,
+            totalScore,
+            overallScore,
+          };
+        });
+        // Attach mock evaluations
+        obj.evaluations = mockEvaluations;
+        // Compute averageScore from mock evaluations
+        obj.averageScore = parseFloat(
+          (mockEvaluations.reduce((sum, ev) => sum + ev.overallScore, 0) / (mockEvaluations.length || 1)).toFixed(2)
+        );
+        return obj;
+      });
+      // Sort by averageScore descending and attach rank
+      enriched.sort((a: any, b: any) => b.averageScore - a.averageScore);
+      enriched.forEach((obj: any, idx: number) => {
+        obj.rank = idx + 1;
+      });
+
+      return res.status(200).json(enriched);
     } catch (error) {
       console.error('Error fetching tender submissions:', error);
       return res.status(500).json({ message: 'Server error' });

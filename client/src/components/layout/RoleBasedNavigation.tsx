@@ -39,11 +39,10 @@ export function RoleBasedNavigation() {
   };
 
   return (
-    <aside className="sticky top-0 w-64 h-screen bg-gray-950 text-white flex flex-col shadow-lg">image.png
+    <aside className="sticky top-0 w-64 h-screen bg-gray-950 text-white flex flex-col shadow-lg">
       {/* Header */}
       <div className="flex items-center h-16 px-6 bg-gray-900">
-        <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center font-bold text-indigo-800">SP</div>
-        <h1 className="ml-3 text-lg font-bold">Procurement</h1>
+      <img src="/logo.png" alt="logo" className="w-30 h-20" />
       </div>
 
       {/* Navigation */}

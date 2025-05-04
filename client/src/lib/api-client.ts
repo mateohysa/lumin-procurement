@@ -82,6 +82,11 @@ export const tenderApi = {
   // Get submissions for a specific tender
   getTenderSubmissions: async (tenderId: string) => {
     return apiClient.get(`/tenders/${tenderId}/submissions`);
+  },
+  
+  // Evaluate submissions using AI scoring
+  evaluateSubmissions: async (tenderId: string) => {
+    return apiClient.get(`/submissions-score-ai/${tenderId}`);
   }
 };
 

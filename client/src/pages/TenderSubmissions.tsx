@@ -44,6 +44,7 @@ const TenderSubmissions = () => {
   const [tender, setTender] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [aiScored, setAiScored] = useState<boolean>(false);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -117,6 +118,25 @@ const TenderSubmissions = () => {
     }, 1500);
   };
 
+  const handleAiEvaluate = async () => {
+    if (!id) return;
+    try {
+      const res = await tenderApi.evaluateSubmissions(id);
+      const aiSubs = res.data.submissions;
+      // Merge aiScore into submissions
+      setSubmissions((prev) => prev.map((sub) => {
+        const match = aiSubs.find((item: any) => {
+          const doc = item._doc || item;
+          return doc._id === sub._id;
+        });
+        return match ? { ...sub, aiScore: match.aiScore } : sub;
+      }));
+      setAiScored(true);
+    } catch (error) {
+      console.error('Error evaluating submissions with AI:', error);
+    }
+  };
+
   if (!tender) {
     return <div className="flex justify-center items-center h-64">Loading tender...</div>;
   }
@@ -142,6 +162,12 @@ const TenderSubmissions = () => {
               {submissions.length} submissions received
             </p>
           </div>
+        </div>
+
+        <div className="mb-4 flex justify-end">
+          <Button variant="outline" size="sm" onClick={handleAiEvaluate} disabled={aiScored}>
+            Evaluate Score from AI
+          </Button>
         </div>
 
         {submissions.length > 0 ? (
@@ -171,9 +197,9 @@ const TenderSubmissions = () => {
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </div>
                     </TableHead>
-                    <TableHead onClick={() => requestSort('rank')} className="cursor-pointer">
+                    <TableHead className="cursor-pointer" onClick={() => requestSort('aiScore.final_score')}>
                       <div className="flex items-center">
-                        Rank
+                        AI Score
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </div>
                     </TableHead>
@@ -194,7 +220,15 @@ const TenderSubmissions = () => {
                           <div className="font-medium">{submission.vendor.name}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{submission.submissionDate}</TableCell>
+                      <TableCell>
+                        {submission.submissionDate
+                          ? new Date(submission.submissionDate).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })
+                          : '-'}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={submission.status === 'Winner' ? 'default' : 'outline'}>
                           {submission.status === 'Winner' && <Award className="mr-1 h-3 w-3" />}
@@ -202,17 +236,34 @@ const TenderSubmissions = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {submission.averageScore > 0 ? (
+                        {user?.role === 'admin' && submission.evaluations ? (
+                          <div className="space-y-1">
+                            {submission.evaluations.map((ev: any) => (
+                              <div key={ev.evaluatorId} className="text-sm">
+                                <span className="font-medium">{ev.evaluatorName}:</span> {ev.overallScore.toFixed(2)}
+                              </div>
+                            ))}
+                            <div className="font-semibold">Avg: {submission.averageScore.toFixed(2)}</div>
+                          </div>
+                        ) : submission.averageScore > 0 ? (
                           <span className="font-medium">{submission.averageScore}</span>
                         ) : (
                           <span className="text-muted-foreground">Pending</span>
                         )}
                       </TableCell>
                       <TableCell>
-                        {submission.rank > 0 ? (
-                          <Badge variant={submission.rank === 1 ? 'secondary' : 'outline'} className="flex w-8 justify-center">
-                            {submission.rank}
-                          </Badge>
+                        {/* AI Score cell */}
+                        {submission.aiScore ? (
+                          <div className="space-y-1 text-sm">
+                            <div className="font-medium">{submission.aiScore.final_score.toFixed(2)}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {Object.entries(submission.aiScore.subscores).map(([crit, score], idx) => (
+                                <span key={crit}>
+                                  {crit}: {score}{idx < Object.entries(submission.aiScore.subscores).length - 1 ? ', ' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -224,9 +275,9 @@ const TenderSubmissions = () => {
                             Details
                           </Button>
                           
-                          {user?.role === 'admin' && submission.status === 'Evaluated' && (
-                            <Button 
-                              variant="default" 
+                          {user?.role === 'admin' && submission.rank === 1 && (
+                            <Button
+                              variant="default"
                               size="sm"
                               onClick={() => handlePublishWinner(submission._id)}
                               disabled={!!publishingWinnerId}

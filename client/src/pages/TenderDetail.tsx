@@ -28,6 +28,34 @@ const TenderDetail = () => {
   const [tender, setTender] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // submissions for preview
+  const mockSubmissions = [
+    {
+      id: 's1',
+      vendorName: 'Vendor Alpha',
+      submissionDate: '2025-05-01',
+      status: 'Under Review',
+      documents: [
+        { id: 'd1', name: 'proposal_alpha.pdf' },
+        { id: 'd2', name: 'budget_alpha.xlsx' },
+      ],
+      evaluations: [
+        { evaluatorName: 'John Doe', score: 82, comments: 'Clear proposal.' },
+        { evaluatorName: 'Jane Smith', score: 78, comments: 'Budget a bit high.' },
+      ],
+    },
+    {
+      id: 's2',
+      vendorName: 'Vendor Beta',
+      submissionDate: '2025-04-28',
+      status: 'Submitted',
+      documents: [
+        { id: 'd3', name: 'proposal_beta.pdf' },
+      ],
+      evaluations: [],
+    },
+  ];
+
   useEffect(() => {
     const fetchTender = async () => {
       try {
@@ -169,6 +197,46 @@ const TenderDetail = () => {
                     ))}
                   </div>
                 </div>
+
+                {/* Submissions Listing */}
+                {!isOpenTender && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Submissions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {mockSubmissions.map(sub => (
+                      <div key={sub.id} className="border p-4 rounded-md">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-medium">{sub.vendorName}</span>
+                          <Badge variant={sub.status === 'Submitted' ? 'secondary' : 'default'}>
+                            {sub.status}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground mb-2">Date: {sub.submissionDate}</div>
+                        <div className="mb-2">
+                          <div className="font-medium">Documents</div>
+                          <ul className="list-disc list-inside text-sm">
+                            {sub.documents.map(doc => <li key={doc.id}>{doc.name}</li>)}
+                          </ul>
+                        </div>
+                        {sub.evaluations.length > 0 && (
+                          <div>
+                            <div className="font-medium">Evaluations</div>
+                            <ul className="list-disc list-inside text-sm">
+                              {sub.evaluations.map(ev => (
+                                <li key={ev.evaluatorName}>
+                                  <span className="font-medium">{ev.evaluatorName}</span>: {ev.score} - {ev.comments}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+                )}
               </CardContent>
             </Card>
 

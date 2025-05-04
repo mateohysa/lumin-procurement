@@ -2,6 +2,7 @@ import express from 'express';
 import { Request, Response } from 'express';
 import { checkAuthenticated } from '../middleware/checkAuth.js';
 import Submission from '../models/submissionModel.js';
+import Tender from '../models/tenderModel.js';
 
 const router = express.Router();
 
@@ -12,13 +13,58 @@ const router = express.Router();
  */
 router.get('/:id', checkAuthenticated, async (req: Request, res: Response) => {
   try {
+    // Fetch submission and populate vendor and tender with assigned evaluators
     const submission = await Submission.findById(req.params.id)
       .populate('vendor', 'name email avatar')
-      .populate('tender', 'title');
+      .populate({
+        path: 'tender',
+        select: 'title assignedEvaluators status',
+        populate: { path: 'assignedEvaluators', select: 'name email avatar' }
+      });
     if (!submission) {
       return res.status(404).json({ message: 'Submission not found' });
     }
-    res.json(submission);
+    // Convert to plain object
+    const submissionObj = submission.toObject() as any;
+    // Restrict access: admin and evaluators cannot view if tender is still open
+    const user = req.user as any;
+    if (submissionObj.tender.status === 'open' && (user.role === 'admin' || user.role === 'evaluator')) {
+      return res.status(403).json({ message: 'Not allowed to view this submission while tender is open' });
+    }
+    // Prepare mock evaluator scores
+    const evaluators = submissionObj.tender.assignedEvaluators || [];
+    const criteriaNames = ['technical', 'financial', 'experience', 'implementation'];
+    const mockEvaluations: any[] = evaluators.map((ev: any, idx: number) => {
+      const scores: Record<string, number> = {};
+      // Assign static decreasing mock scores per criteria
+      criteriaNames.forEach((c) => {
+        const base = { technical: 80, financial: 85, experience: 90, implementation: 95 }[c] || 80;
+        scores[c] = base - idx * 5;
+      });
+      const totalScore = criteriaNames.reduce((sum, c) => sum + scores[c], 0);
+      const overallScore = totalScore / criteriaNames.length;
+      return {
+        evaluatorId: ev._id,
+        evaluatorName: ev.name,
+        scores,
+        comments: 'This is a mock evaluator comment.',
+        totalScore,
+        count: criteriaNames.length,
+        overallScore,
+        rank: 0
+      };
+    });
+    // Sort and assign ranks
+    mockEvaluations.sort((a, b) => b.overallScore - a.overallScore);
+    mockEvaluations.forEach((ev, i) => { ev.rank = i + 1; });
+    // Compute submission average score
+    const averageScore = mockEvaluations.reduce((sum, ev) => sum + ev.overallScore, 0)
+      / (mockEvaluations.length || 1);
+    // Attach mock data
+    submissionObj.evaluations = mockEvaluations;
+    submissionObj.averageScore = parseFloat(averageScore.toFixed(2));
+    submissionObj.overallRank = 1; // Single submission in detail view
+    return res.json(submissionObj);
   } catch (error) {
     console.error(`Error finding submission with id ${req.params.id}:`, error);
     res.status(500).json({ message: 'Server error' });

@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Download, CheckCircle, ListOrdered, Award, ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { submissionApi } from '@/lib/api-client';
+import { submissionApi, tenderApi } from '@/lib/api-client';
 
 function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 Bytes';
@@ -24,6 +24,8 @@ const SubmissionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [submission, setSubmission] = useState<any>(null);
+  const [aiEvalDesc, setAiEvalDesc] = useState<string>('');
+  const [aiScore, setAiScore] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   // Track publishing state for winner button
@@ -43,32 +45,26 @@ const SubmissionDetail = () => {
           type: att.fileType.split('/')[1] || '',
           size: formatBytes(att.fileSize),
         }));
-        // Group evaluation scores by evaluator
-        const evalMap: Record<string, any> = {};
-        data.evaluationScores.forEach((es: any) => {
-          const evId = es.evaluator._id;
-          if (!evalMap[evId]) {
-            evalMap[evId] = {
-              evaluatorId: evId,
-              evaluatorName: es.evaluator.name,
-              scores: { technical: 0, financial: 0, experience: 0, implementation: 0 },
-              comments: es.comments,
-              totalScore: 0,
-              count: 0,
-            };
-          }
-          evalMap[evId].scores[es.criteriaName] = es.score;
-          evalMap[evId].totalScore += es.score;
-          evalMap[evId].count += 1;
-        });
-        let evaluations = Object.values(evalMap).map((ev: any) => {
-          const overallScore = ev.totalScore / ev.count;
-          return { ...ev, overallScore, rank: 0 };
-        });
-        evaluations = evaluations
-          .sort((a, b) => b.overallScore - a.overallScore)
-          .map((ev: any, idx: number) => ({ ...ev, rank: idx + 1 }));
-        setSubmission({ ...data, documents, evaluations });
+        // Use server-provided mock evaluations (scores and comments)
+        const evaluations = data.evaluations || [];
+        // Attach averageScore and overallRank from server if available
+        const averageScore = data.averageScore;
+        const overallRank = data.overallRank;
+        // Update submission state with mock data
+        setSubmission({ ...data, documents, evaluations, averageScore, overallRank });
+        // Fetch AI evaluation for this tender
+        if (data.tender?._id) {
+          const aiRes = await tenderApi.evaluateSubmissions(data.tender._id);
+          const aiDesc = aiRes.data.aiEvaluationDescription || '';
+          const aiSubs = aiRes.data.submissions || [];
+          // find matching submission
+          const aiEntry = aiSubs.find((item: any) => {
+            const doc = item._doc || item;
+            return doc._id === data._id;
+          });
+          setAiEvalDesc(aiDesc);
+          setAiScore(aiEntry?.aiScore || null);
+        }
       } catch (err: any) {
         console.error('Error fetching submission:', err);
         setError(err.message || 'Error fetching submission');
@@ -271,6 +267,33 @@ const SubmissionDetail = () => {
                           ))}
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
+              {(isAdmin || user?.role === 'evaluator') && (
+                <TabsContent value="ai">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>AI Evaluation</CardTitle>
+                      <CardDescription>{aiEvalDesc}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {aiScore ? (
+                        <div className="space-y-2">
+                          <div className="font-medium">Final Score: {aiScore.final_score.toFixed(2)}</div>
+                          <div className="text-sm">
+                            Subscores:
+                            <ul className="list-disc list-inside ml-4">
+                              {Object.entries(aiScore.subscores).map(([crit, val]) => (
+                                <li key={crit}>{crit}: {val}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">AI evaluation not available.</p>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
