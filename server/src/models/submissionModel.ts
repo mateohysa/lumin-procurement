@@ -30,7 +30,7 @@ const submissionSchema = new Schema<ISubmission>(
     tender: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: 'Tender',
+      ref: 'Tender'
     },
     vendor: {
       type: Schema.Types.ObjectId,

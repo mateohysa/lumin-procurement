@@ -11,6 +11,7 @@ import loginRoute from './routes/login';
 import registerRoute from './routes/register';
 import tendersRoute from './routes/tenders';
 import evaluatorsRoute from './routes/evaluators';
+import submissionsRoute from './routes/tenderSubmissions'
 
 // Connect to MongoDB
 connectDB();
@@ -69,6 +70,8 @@ app.get('/api/manager/dashboard', authenticateJWT, isProcurementManager, (req, r
     }
   });
 });
+
+app.use('/api/submissions', submissionsRoute);
 
 // Start server
 const PORT = process.env.PORT || 5173;
