@@ -223,9 +223,9 @@ Client runs on `http://localhost:8080`, with `/api` calls proxied to the back-en
 
 ---
 
-## Docker Compose (Fake)
+## Docker Compose
 
-This repository includes a sample `docker-compose.yaml` for local development use only. It spins up three services:
+This repository includes a `docker-compose.yaml`:
 
 - **api**: The back-end server (Node.js + Express), mounting the `server` folder and exposing port `5173`.
 - **client**: The front-end app (Vite), mounting the `client` folder and exposing port `8080`.
@@ -241,8 +241,6 @@ This will:
 - Install dependencies and start the back-end on `http://localhost:5173`.
 - Install dependencies and start the front-end on `http://localhost:8080`.
 - Launch MongoDB accessible at `mongodb://localhost:27017`.
-
-> Note: This setup is a development convenience. For production deployments, please configure proper Dockerfiles, multi-stage builds, and secure environment variables.
 
 ---
 
