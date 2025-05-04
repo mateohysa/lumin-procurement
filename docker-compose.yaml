@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  api:
+    image: node:16-alpine
+    working_dir: /app/server
+    volumes:
+      - ./server:/app/server
+      - /app/server/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      MONGO_URI: mongodb://db:27017/procurement_db
+      JWT_SECRET: your_jwt_secret
+      AWS_ACCESS_KEY_ID: dummy_key
+      AWS_SECRET_ACCESS_KEY: dummy_secret
+      S3_BUCKET: dummy_bucket
+    command: npm install && npm run dev
+    depends_on:
+      - db
+
+  client:
+    image: node:16-alpine
+    working_dir: /app/client
+    volumes:
+      - ./client:/app/client
+      - /app/client/node_modules
+    ports:
+      - "8080:8080"
+    environment:
+      VITE_API_URL: http://localhost:5173/api
+      CLIENT_URL: http://localhost:8080
+    command: npm install && npm run dev
+    depends_on:
+      - api
+
+  db:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
+    driver: local 

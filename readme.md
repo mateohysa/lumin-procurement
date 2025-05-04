@@ -31,6 +31,7 @@ The platform is built with:
 11. [Database Models](#database-models)
 12. [Contributing](#contributing)
 13. [License](#license)
+14. [Docker Compose (Fake)](#docker-compose-fake)
 
 ---
 
@@ -219,6 +220,29 @@ Client runs on `http://localhost:8080`, with `/api` calls proxied to the back-en
 3. Commit your changes (`git commit -m "Add XYZ feature"`)
 4. Push to branch (`git push origin feature/XYZ`)
 5. Open a Pull Request
+
+---
+
+## Docker Compose (Fake)
+
+This repository includes a sample `docker-compose.yaml` for local development use only. It spins up three services:
+
+- **api**: The back-end server (Node.js + Express), mounting the `server` folder and exposing port `5173`.
+- **client**: The front-end app (Vite), mounting the `client` folder and exposing port `8080`.
+- **db**: A MongoDB container, persisting data in a Docker volume.
+
+To run all services locally (mocked only, not for production):
+```bash
+# From the project root
+docker-compose up --build
+```
+
+This will:
+- Install dependencies and start the back-end on `http://localhost:5173`.
+- Install dependencies and start the front-end on `http://localhost:8080`.
+- Launch MongoDB accessible at `mongodb://localhost:27017`.
+
+> Note: This setup is a development convenience. For production deployments, please configure proper Dockerfiles, multi-stage builds, and secure environment variables.
 
 ---
 
