@@ -257,9 +257,9 @@ const TenderSubmissions = () => {
                           <div className="space-y-1 text-sm">
                             <div className="font-medium">{Number(submission.aiScore.final_score).toFixed(2)}</div>
                             <div className="text-xs text-muted-foreground">
-                              {Object.entries(submission.aiScore.subscores as Record<string, number>).map(([crit, score], idx, arr) => (
+                              {Object.entries(submission.aiScore.subscores as Record<string, number | null | undefined>).map(([crit, score], idx, arr) => (
                                 <span key={crit}>
-                                  {crit}: {score.toString()}{idx < arr.length - 1 ? ', ' : ''}
+                                  {crit}: {score != null ? score : '-'}{idx < arr.length - 1 ? ', ' : ''}
                                 </span>
                               ))}
                             </div>

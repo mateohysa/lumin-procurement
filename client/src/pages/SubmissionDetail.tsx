@@ -299,8 +299,8 @@ const SubmissionDetail = () => {
                              Final Score: {aiScore.final_score != null ? Number(aiScore.final_score).toFixed(2) : '-'}
                            </div>
                            <ul className="list-disc list-inside ml-4 text-sm">
-                             {Object.entries(aiScore.subscores as Record<string, number>).map(([crit, val]) => (
-                               <li key={crit}>{crit}: {val}/10</li>
+                             {Object.entries(aiScore.subscores as Record<string, number | null | undefined>).map(([crit, val]) => (
+                               <li key={crit}>{crit}: {val != null ? val : '-'}</li>
                              ))}
                            </ul>
                          </div>
