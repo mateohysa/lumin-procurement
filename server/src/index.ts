@@ -11,6 +11,10 @@ import loginRoute from './routes/login';
 import registerRoute from './routes/register';
 import tendersRoute from './routes/tenders';
 import evaluatorsRoute from './routes/evaluators';
+import submissionsAIRoute from './routes/tenderSubmissionsAI';
+import submissionDetailRoute from './routes/submissionDetail';
+
+
 
 // Connect to MongoDB
 connectDB();
@@ -29,7 +33,9 @@ app.use('/api/login', loginRoute);
 app.use('/api/register', registerRoute);
 app.use('/api/tenders', tendersRoute);
 app.use('/api/evaluators', evaluatorsRoute);
-app.use('/api/evaluators', evaluatorsRoute);
+app.use('/api/submissions-score-ai', submissionsAIRoute);
+app.use('/api/submissions', submissionDetailRoute);
+
 
 // Protected routes
 app.get('/api/profile', authenticateJWT, (req, res) => {

@@ -151,7 +151,6 @@ const MyEvaluations = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Tender</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead>Submitted</TableHead>
@@ -163,9 +162,12 @@ const MyEvaluations = () => {
               <TableBody>
                 {pendingList.map(evaluation => (
                   <TableRow key={evaluation.id}>
-                    <TableCell className="font-medium">{evaluation.id}</TableCell>
                     <TableCell>{evaluation.tender.title}</TableCell>
-                    <TableCell>{evaluation.vendor}</TableCell>
+                    <TableCell>
+                      {pendingList
+                        .filter(e => e.tender.id === evaluation.tender.id)
+                        .findIndex(e => e.id === evaluation.id) + 1}
+                    </TableCell>
                     <TableCell>{new Date(evaluation.submissionDate).toLocaleDateString()}</TableCell>
                     <TableCell>{getDaysRemaining(evaluation.deadline)}</TableCell>
                     <TableCell>{getPriorityBadge(evaluation.priority)}</TableCell>

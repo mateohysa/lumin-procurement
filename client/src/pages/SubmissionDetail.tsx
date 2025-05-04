@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -9,74 +9,86 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Download, CheckCircle, ListOrdered, Award, ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { submissionApi } from '@/lib/api-client';
 
-// Mock submission data
-const submissionData = {
-  id: '123',
-  tenderId: '45',
-  tenderTitle: 'Office Equipment Procurement',
-  vendorName: 'TechSolutions Inc.',
-  submissionDate: '2025-04-15',
-  status: 'Evaluated',
-  documents: [
-    { id: '1', name: 'Technical Proposal', type: 'pdf', size: '3.2 MB' },
-    { id: '2', name: 'Financial Proposal', type: 'pdf', size: '1.8 MB' },
-    { id: '3', name: 'Company Profile', type: 'pdf', size: '4.5 MB' },
-    { id: '4', name: 'Past Experience', type: 'pdf', size: '2.3 MB' },
-  ],
-  evaluations: [
-    { 
-      evaluatorId: '101', 
-      evaluatorName: 'John Smith',
-      scores: {
-        technical: 85,
-        financial: 78,
-        experience: 92,
-        implementation: 88
-      },
-      comments: 'Strong technical proposal with excellent past experience.',
-      overallScore: 85.75,
-      rank: 2
-    },
-    { 
-      evaluatorId: '102', 
-      evaluatorName: 'Emma Wilson',
-      scores: {
-        technical: 82,
-        financial: 81,
-        experience: 90,
-        implementation: 85
-      },
-      comments: 'Well-balanced proposal with good financial planning.',
-      overallScore: 84.5,
-      rank: 2
-    },
-    { 
-      evaluatorId: '103', 
-      evaluatorName: 'Michael Brown',
-      scores: {
-        technical: 88,
-        financial: 75,
-        experience: 95,
-        implementation: 87
-      },
-      comments: 'Excellent experience and technical approach.',
-      overallScore: 86.25,
-      rank: 1
-    }
-  ],
-  overallRank: 2,
-  averageScore: 85.5
-};
+function formatBytes(bytes: number, decimals = 2): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 
 const SubmissionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const [submission, setSubmission] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  // Track publishing state for winner button
   const [isPublishingWinner, setIsPublishingWinner] = useState(false);
-  
-  // In a real app, you would fetch the submission data
-  const submission = submissionData;
-  
+
+  useEffect(() => {
+    if (!id) return;
+    const fetchSubmission = async () => {
+      setLoading(true);
+      try {
+        const res = await submissionApi.getSubmissionById(id);
+        const data = res.data;
+        // Map attachments to documents
+        const documents = data.attachments.map((att: any) => ({
+          id: att.fileKey,
+          name: att.fileName,
+          type: att.fileType.split('/')[1] || '',
+          size: formatBytes(att.fileSize),
+        }));
+        // Group evaluation scores by evaluator
+        const evalMap: Record<string, any> = {};
+        data.evaluationScores.forEach((es: any) => {
+          const evId = es.evaluator._id;
+          if (!evalMap[evId]) {
+            evalMap[evId] = {
+              evaluatorId: evId,
+              evaluatorName: es.evaluator.name,
+              scores: { technical: 0, financial: 0, experience: 0, implementation: 0 },
+              comments: es.comments,
+              totalScore: 0,
+              count: 0,
+            };
+          }
+          evalMap[evId].scores[es.criteriaName] = es.score;
+          evalMap[evId].totalScore += es.score;
+          evalMap[evId].count += 1;
+        });
+        let evaluations = Object.values(evalMap).map((ev: any) => {
+          const overallScore = ev.totalScore / ev.count;
+          return { ...ev, overallScore, rank: 0 };
+        });
+        evaluations = evaluations
+          .sort((a, b) => b.overallScore - a.overallScore)
+          .map((ev: any, idx: number) => ({ ...ev, rank: idx + 1 }));
+        setSubmission({ ...data, documents, evaluations });
+      } catch (err: any) {
+        console.error('Error fetching submission:', err);
+        setError(err.message || 'Error fetching submission');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubmission();
+  }, [id]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading submission...</div>;
+  }
+  if (error) {
+    return <div className="flex justify-center items-center h-64 text-red-500">{error}</div>;
+  }
+  if (!submission) {
+    return <div className="flex justify-center items-center h-64">Submission not found.</div>;
+  }
+
   const handlePublishWinner = () => {
     setIsPublishingWinner(true);
     
@@ -84,7 +96,7 @@ const SubmissionDetail = () => {
     setTimeout(() => {
       toast({
         title: "Winner Published",
-        description: `${submission.vendorName} has been published as the winner of ${submission.tenderTitle}`,
+        description: `${submission.vendor?.name} has been published as the winner of ${submission.tender?.title}`,
       });
       setIsPublishingWinner(false);
     }, 1500);
@@ -93,9 +105,10 @@ const SubmissionDetail = () => {
   const isAdmin = user?.role === 'admin';
   const isVendor = user?.role === 'vendor';
   
+  console.log(submission);
   const backLinkDestination = isVendor 
     ? '/my-submissions' 
-    : `/tenders/${submission.tenderId}/submissions`;
+    : `/tenders/${submission.tender._id}/submissions`;
   
   const backLinkText = isVendor
     ? 'Back to My Submissions'
@@ -117,7 +130,7 @@ const SubmissionDetail = () => {
             </div>
             <h1 className="text-2xl font-bold">Submission Details</h1>
             <p className="text-muted-foreground">
-              {submission.vendorName} for {submission.tenderTitle}
+              {submission.vendor?.name} for {submission.tender?.title}
             </p>
           </div>
           
@@ -143,11 +156,11 @@ const SubmissionDetail = () => {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground">Vendor</p>
-                <p className="font-medium">{submission.vendorName}</p>
+                <p className="font-medium">{submission.vendor?.name}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Submission Date</p>
-                <p className="font-medium">{submission.submissionDate}</p>
+                <p className="font-medium">{new Date(submission.createdAt).toLocaleDateString()}</p>
               </div>
               {(isAdmin || user?.role === 'evaluator') && (
                 <>

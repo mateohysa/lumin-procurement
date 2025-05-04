@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -170,7 +169,7 @@ export default function Vendors() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Vendor Name</TableHead>
+                    <TableHead>#</TableHead>
                     <TableHead>Company ID</TableHead>
                     <TableHead>Contact Email</TableHead>
                     <TableHead className="text-center">Submissions</TableHead>
@@ -187,9 +186,9 @@ export default function Vendors() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    vendorList.map((vendor) => (
+                    vendorList.map((vendor, idx) => (
                       <TableRow key={vendor.id}>
-                        <TableCell className="font-medium">{vendor.name}</TableCell>
+                        <TableCell className="font-medium">{idx + 1}</TableCell>
                         <TableCell>{vendor.companyId}</TableCell>
                         <TableCell>{vendor.email}</TableCell>
                         <TableCell className="text-center">
@@ -208,9 +207,9 @@ export default function Vendors() {
                         </TableCell>
                         <TableCell>
                           {vendor.verified ? (
-                            <CircleCheck className="h-5 w-5 text-green-500" />
+                            <CircleCheck className="h-4 w-4 text-green-500" />
                           ) : (
-                            <CircleDot className="h-5 w-5 text-gray-300" />
+                            <CircleDot className="h-4 w-4 text-gray-300" />
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -230,7 +229,7 @@ export default function Vendors() {
                             >
                               {vendor.status === 'Active' ? (
                                 <>
-                                  <Lock className="h-4 w-4 mr-1" />
+                                  <Lock className="mr-2 h-4 w-4" />
                                   Block
                                 </>
                               ) : (

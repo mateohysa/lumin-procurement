@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { 
@@ -49,48 +49,65 @@ const evaluationData = {
 const EvaluationForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [scores, setScores] = useState<{[key: number]: number}>({});
-  const [comments, setComments] = useState<{[key: number]: string}>({});
-  const [overallComment, setOverallComment] = useState("");
+  // Load and group pending evaluations for this tender
+  const pendingList = JSON.parse(localStorage.getItem('pendingEvaluations') || '[]');
+  const tenderSubmissions = pendingList.filter((e: any) => e.tender.id === evaluationData.tenderId);
+  // Track which vendor tab is active
+  const initialVendorIndex = tenderSubmissions.findIndex((e: any) => e.id === id);
+  const [vendorIndex, setVendorIndex] = useState(initialVendorIndex >= 0 ? initialVendorIndex : 0);
+  // Per-vendor scores, comments, and overall comment
+  const [perVendorData, setPerVendorData] = useState(
+    tenderSubmissions.map(() => ({ scores: {}, comments: {}, overall: '' }))
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Use mock data for now
+  // Helper to update current vendor data
+  const updateVendorData = (field: 'scores' | 'comments' | 'overall', key: any, value?: any) => {
+    setPerVendorData(prev => {
+      const updated = [...prev];
+      const cur = { ...updated[vendorIndex] } as any;
+      if (field === 'overall') cur.overall = key;
+      else if (field === 'scores') cur.scores[key] = value;
+      else cur.comments[key] = value;
+      updated[vendorIndex] = cur;
+      return updated;
+    });
+  };
+  // Use global evaluationData for criteria and documents
   const evaluation = evaluationData;
   
   const handleScoreChange = (criteriaId: number, score: number) => {
     if (score < 1 || score > 5) return;
-    setScores(prev => ({ ...prev, [criteriaId]: score }));
+    updateVendorData('scores', criteriaId, score);
   };
   
   const handleCommentChange = (criteriaId: number, comment: string) => {
-    setComments(prev => ({ ...prev, [criteriaId]: comment }));
+    updateVendorData('comments', criteriaId, comment);
   };
   
-  const getTotalScore = () => {
+  const getTotalScore = (idx: number) => {
+    const { scores } = perVendorData[idx];
     let totalWeightedScore = 0;
     let totalWeight = 0;
-    
-    evaluation.criteria.forEach(criterion => {
-      if (scores[criterion.id]) {
-        totalWeightedScore += (scores[criterion.id] * criterion.weight);
+    evaluationData.criteria.forEach(criterion => {
+      const sc = scores[criterion.id];
+      if (sc) {
+        totalWeightedScore += sc * criterion.weight;
         totalWeight += criterion.weight;
       }
     });
-    
     return totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : "N/A";
   };
   
-  const isFormComplete = () => {
-    return evaluation.criteria.every(criterion => scores[criterion.id]) && overallComment.trim().length > 0;
+  const isVendorComplete = (idx: number) => {
+    const { scores, overall } = perVendorData[idx];
+    return evaluationData.criteria.every(c => scores[c.id]) && overall.trim().length > 0;
   };
+  // Only allow submit when all vendors evaluated
+  const allComplete = tenderSubmissions.length > 0 && tenderSubmissions.every((_, idx) => isVendorComplete(idx));
   
   const handleSubmit = () => {
-    if (!isFormComplete()) {
-      toast({
-        title: "Incomplete evaluation",
-        description: "Please provide scores for all criteria and an overall comment",
-        variant: "destructive",
-      });
+    if (!allComplete) {
+      toast({ title: "Incomplete evaluations", description: "Please evaluate all vendors before submitting.", variant: 'destructive' });
       return;
     }
     
@@ -99,26 +116,24 @@ const EvaluationForm = () => {
     // In a real app, you would submit the evaluation to your backend
     setTimeout(() => {
       toast({
-        title: "Evaluation submitted",
-        description: "Your evaluation has been submitted successfully",
+        title: "Evaluations submitted",
+        description: "All vendor evaluations have been submitted successfully",
       });
       
       // Update localStorage: remove from pending and add to completed
-      // Remove current evaluation from pending list
       const pending = JSON.parse(localStorage.getItem('pendingEvaluations') || '[]');
-      const updatedPending = pending.filter((e: any) => e.id !== id);
-      localStorage.setItem('pendingEvaluations', JSON.stringify(updatedPending));
-      // Add to completed evaluations list
+      const remaining = pending.filter((e: any) => e.tender.id !== evaluationData.tenderId);
+      localStorage.setItem('pendingEvaluations', JSON.stringify(remaining));
       const completed = JSON.parse(localStorage.getItem('completedEvaluations') || '[]');
-      const newEntry = {
-        id: evaluation.id,
-        tender: { id: evaluation.tenderId, title: evaluation.tenderTitle },
-        vendor: evaluation.vendorName,
+      const results = tenderSubmissions.map((sub, idx) => ({
+        id: sub.id,
+        tender: { id: evaluationData.tenderId, title: evaluationData.tenderTitle },
+        vendor: `Vendor ${idx + 1}`,
         completedDate: new Date().toLocaleDateString(),
-        score: parseFloat(getTotalScore()),
+        score: parseFloat(getTotalScore(idx)),
         status: 'completed'
-      };
-      localStorage.setItem('completedEvaluations', JSON.stringify([...completed, newEntry]));
+      }));
+      localStorage.setItem('completedEvaluations', JSON.stringify([...completed, ...results]));
       
       setIsSubmitting(false);
       navigate('/my-evaluations');
@@ -128,6 +143,14 @@ const EvaluationForm = () => {
   return (
     <MainLayout>
       <div className="container mx-auto py-6">
+        {/* Vendor tabs */}
+        <div className="flex gap-2 mb-4">
+          {tenderSubmissions.map((_, i) => (
+            <Button key={i} size="sm" variant={vendorIndex === i ? 'default' : 'outline'} onClick={() => setVendorIndex(i)}>
+              Vendor {i + 1}
+            </Button>
+          ))}
+        </div>
         <div className="flex justify-between items-start mb-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -140,7 +163,7 @@ const EvaluationForm = () => {
             </div>
             <h1 className="text-2xl font-bold">Evaluate Submission: {evaluation.tenderTitle}</h1>
             <p className="text-muted-foreground mt-1">
-              Vendor: {evaluation.vendorName}
+              Vendor: Vendor {vendorIndex + 1}
             </p>
           </div>
         </div>
@@ -156,7 +179,7 @@ const EvaluationForm = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {evaluation.criteria.map((criterion) => (
+                  {evaluationData.criteria.map((criterion) => (
                     <div key={criterion.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div>
@@ -174,7 +197,7 @@ const EvaluationForm = () => {
                               <Button
                                 key={score}
                                 size="sm"
-                                variant={scores[criterion.id] === score ? "default" : "outline"}
+                                variant={perVendorData[vendorIndex].scores[criterion.id] === score ? "default" : "outline"}
                                 className="w-10 h-10"
                                 onClick={() => handleScoreChange(criterion.id, score)}
                               >
@@ -186,7 +209,7 @@ const EvaluationForm = () => {
                         
                         <Textarea 
                           placeholder="Add comments about this criterion (optional)"
-                          value={comments[criterion.id] || ''}
+                          value={perVendorData[vendorIndex].comments[criterion.id] || ''}
                           onChange={(e) => handleCommentChange(criterion.id, e.target.value)}
                         />
                       </div>
@@ -197,8 +220,8 @@ const EvaluationForm = () => {
                     <h3 className="font-medium mb-2">Overall Comments</h3>
                     <Textarea 
                       placeholder="Provide overall feedback and observations about this submission"
-                      value={overallComment}
-                      onChange={(e) => setOverallComment(e.target.value)}
+                      value={perVendorData[vendorIndex].overall}
+                      onChange={(e) => updateVendorData('overall', e.target.value)}
                       className="min-h-[120px]"
                     />
                   </div>
@@ -206,15 +229,15 @@ const EvaluationForm = () => {
                   <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                     <div>
                       <span className="text-sm font-medium">Total Weighted Score:</span>
-                      <span className="ml-2 text-xl font-bold">{getTotalScore()}/5.00</span>
+                      <span className="ml-2 text-xl font-bold">{getTotalScore(vendorIndex)}/5.00</span>
                     </div>
                     
                     <Button 
                       onClick={handleSubmit}
                       size="lg"
-                      disabled={!isFormComplete() || isSubmitting}
+                      disabled={!allComplete || isSubmitting}
                     >
-                      {isSubmitting ? 'Submitting...' : 'Submit Evaluation'}
+                      {isSubmitting ? 'Submitting...' : 'Submit Evaluations'}
                     </Button>
                   </div>
                 </div>

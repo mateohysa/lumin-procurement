@@ -77,7 +77,22 @@ export const tenderApi = {
   // Get open tenders that vendors can apply to
   getOpenTenders: async () => {
     return apiClient.get('/tenders/open');
+  },
+  
+  // Get submissions for a specific tender
+  getTenderSubmissions: async (tenderId: string) => {
+    return apiClient.get(`/tenders/${tenderId}/submissions`);
   }
+};
+
+// Add evaluator API function
+export const evaluatorApi = {
+  getEvaluators: async () => apiClient.get('/evaluators'),
+};
+
+// Add submission API function
+export const submissionApi = {
+  getSubmissionById: async (id: string) => apiClient.get(`/submissions/${id}`),
 };
 
 export default apiClient;

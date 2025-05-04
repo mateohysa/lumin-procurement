@@ -1,13 +1,13 @@
-
 import React from 'react';
-import { Avatar } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { 
   Bell, 
   ChevronDown,
   Search,
   MessageCircle,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { 
@@ -41,14 +41,6 @@ export function Header() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <SidebarTrigger />
-          <div className="relative w-64 lg:w-96">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Search tenders, vendors, reports..."
-              className="w-full rounded-md border border-input bg-white px-9 py-2 text-sm ring-offset-background"
-            />
-          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -108,18 +100,32 @@ export function Header() {
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2">
-                  <UserAvatar />
-                  <span className="hidden md:inline">{user.name}</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
+                <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-primary">
+                  {user.avatar ? (
+                    <AvatarImage src={user.avatar} alt="User avatar" />
+                  ) : (
+                    <AvatarFallback>
+                      <User className="h-5 w-5 text-gray-900" />
+                    </AvatarFallback>
+                  )}
+                </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>{user.role.charAt(0).toUpperCase() + user.role.slice(1)} Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-                <DropdownMenuItem>Preferences</DropdownMenuItem>
-                {user.role === 'admin' && <DropdownMenuItem>Team Management</DropdownMenuItem>}
+                <div className="flex items-center space-x-2 p-4">
+                  <Avatar className="h-10 w-10">
+                    {user.avatar ? (
+                      <AvatarImage src={user.avatar} alt="User avatar" />
+                    ) : (
+                      <AvatarFallback>
+                        <User className="h-8 w-8 text-gray-900" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                  </div>
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />

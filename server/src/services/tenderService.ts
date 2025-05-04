@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Tender, { ITender } from '../models/tenderModel.js';
+import Submission, { ISubmission } from '../models/submissionModel.js';
 
 export interface TenderQueryOptions {
   status?: 'draft' | 'open' | 'closed' | 'awarded' | 'cancelled';
@@ -28,7 +29,7 @@ export async function createTender(tenderData: Partial<ITender>): Promise<ITende
  */
 export async function findTenderById(id: string): Promise<ITender | null> {
   try {
-    const tender = await Tender.findById(id);
+    const tender = await Tender.findById(id).populate('assignedEvaluators', 'name email avatar');
     return tender;
   } catch (error) {
     console.error(`Error finding tender with id ${id}:`, error);
@@ -82,11 +83,14 @@ export async function findTenders(options: TenderQueryOptions = {}): Promise<ITe
  */
 export async function updateTender(id: string, updateData: Partial<ITender>): Promise<ITender | null> {
   try {
-    const updatedTender = await Tender.findByIdAndUpdate(
+    let updatedTender = await Tender.findByIdAndUpdate(
       id,
       updateData,
       { new: true } // Return the updated document
     );
+    if (updatedTender) {
+      updatedTender = await updatedTender.populate('assignedEvaluators', 'name email avatar');
+    }
     return updatedTender;
   } catch (error) {
     console.error(`Error updating tender with id ${id}:`, error);
@@ -138,6 +142,22 @@ export async function findOpenTenders(): Promise<ITender[]> {
     return tenders;
   } catch (error) {
     console.error('Error finding open tenders:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch submissions for a specific tender
+ */
+export async function findSubmissionsByTenderId(tenderId: string): Promise<ISubmission[]> {
+  try {
+    // Populate vendor details for each submission
+    const submissions = await Submission.find({ tender: tenderId })
+      .populate('vendor', 'name email avatar')
+      .exec();
+    return submissions;
+  } catch (error) {
+    console.error(`Error fetching submissions for tender ${tenderId}:`, error);
     return [];
   }
 }

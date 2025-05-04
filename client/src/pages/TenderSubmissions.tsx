@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,76 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-
-// Mock submissions data for a tender
-const mockSubmissions = [
-  {
-    id: '111',
-    vendor: {
-      id: '1',
-      name: 'TechSolutions Inc.',
-      logo: 'TS'
-    },
-    submissionDate: '2025-04-15',
-    status: 'Evaluated',
-    documents: 4,
-    evaluations: 3,
-    averageScore: 85.5,
-    rank: 2
-  },
-  {
-    id: '222',
-    vendor: {
-      id: '2',
-      name: 'Global Services Ltd.',
-      logo: 'GS'
-    },
-    submissionDate: '2025-04-16',
-    status: 'Evaluated',
-    documents: 5,
-    evaluations: 3,
-    averageScore: 88.7,
-    rank: 1
-  },
-  {
-    id: '333',
-    vendor: {
-      id: '3',
-      name: 'Innovate Systems',
-      logo: 'IS'
-    },
-    submissionDate: '2025-04-14',
-    status: 'Evaluated',
-    documents: 4,
-    evaluations: 3,
-    averageScore: 79.3,
-    rank: 3
-  },
-  {
-    id: '444',
-    vendor: {
-      id: '4',
-      name: 'Digital Solutions Corp',
-      logo: 'DS'
-    },
-    submissionDate: '2025-04-17',
-    status: 'Under Review',
-    documents: 4,
-    evaluations: 1,
-    averageScore: 0,
-    rank: 0
-  }
-];
-
-// Mock tender data
-const mockTender = {
-  id: '45',
-  title: 'Office Equipment Procurement',
-  status: 'Evaluation',
-  deadline: '2025-04-10',
-  publishDate: '2025-03-15',
-  hasWinner: false
-};
+import { tenderApi } from '@/lib/api-client';
 
 // Function to get the rank display
 const getRankDisplay = (rank: number) => {
@@ -111,11 +41,27 @@ const TenderSubmissions = () => {
     direction: 'ascending'
   });
   const [publishingWinnerId, setPublishingWinnerId] = useState<string | null>(null);
+  const [tender, setTender] = useState<any>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   
-  // Use mock data - in a real app, fetch data based on the tender ID
-  const tender = mockTender;
-  const [submissions, setSubmissions] = useState(mockSubmissions);
-  
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const tenderRes = await tenderApi.getTenderById(id!);
+        setTender(tenderRes.data);
+        const subsRes = await tenderApi.getTenderSubmissions(id!);
+        setSubmissions(subsRes.data);
+      } catch (error) {
+        console.error('Error loading submissions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
   // Sort function
   const sortedSubmissions = React.useMemo(() => {
     let sortableItems = [...submissions];
@@ -152,7 +98,7 @@ const TenderSubmissions = () => {
     
     // Simulate API call
     setTimeout(() => {
-      const winnerSubmission = submissions.find(s => s.id === submissionId);
+      const winnerSubmission = submissions.find(s => s._id === submissionId);
       if (winnerSubmission) {
         toast({
           title: "Winner Published",
@@ -163,13 +109,20 @@ const TenderSubmissions = () => {
         setSubmissions(
           submissions.map(submission => ({
             ...submission,
-            status: submission.id === submissionId ? 'Winner' : submission.status
+            status: submission._id === submissionId ? 'Winner' : submission.status
           }))
         );
       }
       setPublishingWinnerId(null);
     }, 1500);
   };
+
+  if (!tender) {
+    return <div className="flex justify-center items-center h-64">Loading tender...</div>;
+  }
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading submissions...</div>;
+  }
 
   return (
     <MainLayout>
@@ -191,104 +144,108 @@ const TenderSubmissions = () => {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">All Submissions</CardTitle>
-            <CardDescription>
-              Review and compare submissions by different vendors
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">Rank</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead onClick={() => requestSort('submissionDate')} className="cursor-pointer">
-                    <div className="flex items-center">
-                      Submission Date
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead onClick={() => requestSort('averageScore')} className="cursor-pointer">
-                    <div className="flex items-center">
-                      Score
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead onClick={() => requestSort('rank')} className="cursor-pointer">
-                    <div className="flex items-center">
-                      Rank
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </div>
-                  </TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedSubmissions.map((submission) => (
-                  <TableRow key={submission.id} className={submission.rank === 1 ? "bg-yellow-50" : ""}>
-                    <TableCell className="text-center">
-                      {getRankDisplay(submission.rank)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm">
-                          {submission.vendor.logo}
-                        </div>
-                        <div className="font-medium">{submission.vendor.name}</div>
+        {submissions.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">All Submissions</CardTitle>
+              <CardDescription>
+                Review and compare submissions by different vendors
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12 text-center">Rank</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead onClick={() => requestSort('submissionDate')} className="cursor-pointer">
+                      <div className="flex items-center">
+                        Submission Date
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
                       </div>
-                    </TableCell>
-                    <TableCell>{submission.submissionDate}</TableCell>
-                    <TableCell>
-                      <Badge variant={submission.status === 'Winner' ? 'default' : 'outline'}>
-                        {submission.status === 'Winner' && <Award className="mr-1 h-3 w-3" />}
-                        {submission.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {submission.averageScore > 0 ? (
-                        <span className="font-medium">{submission.averageScore}</span>
-                      ) : (
-                        <span className="text-muted-foreground">Pending</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {submission.rank > 0 ? (
-                        <Badge variant={submission.rank === 1 ? 'secondary' : 'outline'} className="flex w-8 justify-center">
-                          {submission.rank}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/submissions/${submission.id}`)}>
-                          <FileText className="mr-1 h-4 w-4" />
-                          Details
-                        </Button>
-                        
-                        {user?.role === 'admin' && submission.status === 'Evaluated' && (
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            onClick={() => handlePublishWinner(submission.id)}
-                            disabled={!!publishingWinnerId}
-                          >
-                            <Award className="mr-1 h-4 w-4" />
-                            {publishingWinnerId === submission.id ? 'Publishing...' : 'Publish Winner'}
-                          </Button>
-                        )}
+                    </TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead onClick={() => requestSort('averageScore')} className="cursor-pointer">
+                      <div className="flex items-center">
+                        Score
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
                       </div>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead onClick={() => requestSort('rank')} className="cursor-pointer">
+                      <div className="flex items-center">
+                        Rank
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {sortedSubmissions.map((submission) => (
+                    <TableRow key={submission._id} className={submission.rank === 1 ? "bg-yellow-50" : ""}>
+                      <TableCell className="text-center">
+                        {getRankDisplay(submission.rank)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm">
+                            {submission.vendor.logo}
+                          </div>
+                          <div className="font-medium">{submission.vendor.name}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{submission.submissionDate}</TableCell>
+                      <TableCell>
+                        <Badge variant={submission.status === 'Winner' ? 'default' : 'outline'}>
+                          {submission.status === 'Winner' && <Award className="mr-1 h-3 w-3" />}
+                          {submission.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {submission.averageScore > 0 ? (
+                          <span className="font-medium">{submission.averageScore}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Pending</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {submission.rank > 0 ? (
+                          <Badge variant={submission.rank === 1 ? 'secondary' : 'outline'} className="flex w-8 justify-center">
+                            {submission.rank}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/submissions/${submission._id}`)}>
+                            <FileText className="mr-1 h-4 w-4" />
+                            Details
+                          </Button>
+                          
+                          {user?.role === 'admin' && submission.status === 'Evaluated' && (
+                            <Button 
+                              variant="default" 
+                              size="sm"
+                              onClick={() => handlePublishWinner(submission._id)}
+                              disabled={!!publishingWinnerId}
+                            >
+                              <Award className="mr-1 h-4 w-4" />
+                              {publishingWinnerId === submission._id ? 'Publishing...' : 'Publish Winner'}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">No submissions found for this tender.</div>
+        )}
       </div>
     </MainLayout>
   );

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -155,7 +154,7 @@ export function DisputeDetail({ dispute, isOpen, onClose, onStatusChange }: Disp
                   onClick={() => handleStatusChange('accepted')}
                   disabled={isSubmitting}
                 >
-                  Accept & Change Winner
+                  Accept
                 </Button>
               </div>
             </div>

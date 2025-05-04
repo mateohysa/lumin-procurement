@@ -1,51 +1,14 @@
-
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Sidebar, 
-  SidebarContent, 
-  SidebarFooter, 
-  SidebarGroup, 
-  SidebarGroupContent, 
-  SidebarGroupLabel, 
-  SidebarHeader, 
-  SidebarMenu, 
-  SidebarMenuItem, 
-  SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton
-} from '@/components/ui/sidebar';
-import { 
-  Home, 
-  FilePlus, 
-  Send, 
-  Users, 
-  Award, 
-  FileCheck, 
-  LogOut, 
-  Briefcase, 
-  ClipboardCheck,
-  ListOrdered,
-  UserCheck,
-  Flag
-} from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Home, Briefcase, Users, UserCheck, Flag, FileCheck, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/contexts/AuthContext';
 
-// Menu items by role
-const menuItemsByRole: Record<UserRole, Array<{title: string; icon: React.FC<any>; path: string; subItems?: Array<{title: string; path: string}>}>> = {
+// Menu items for each role
+const MENU_CONFIG: Record<UserRole, Array<{ title: string; icon: React.FC<any>; path: string }>> = {
   admin: [
     { title: 'Dashboard', icon: Home, path: '/' },
-    { 
-      title: 'Tenders', 
-      icon: Briefcase, 
-      path: '/tenders',
-      subItems: [
-        { title: 'All Tenders', path: '/tenders' },
-        { title: 'Create Tender', path: '/create-tender' },
-      ]
-    },
+    { title: 'Tenders', icon: Briefcase, path: '/tenders' },
     { title: 'Vendors', icon: Users, path: '/vendors' },
     { title: 'Evaluators', icon: UserCheck, path: '/evaluators' },
     { title: 'Disputes', icon: Flag, path: '/disputes' },
@@ -53,132 +16,70 @@ const menuItemsByRole: Record<UserRole, Array<{title: string; icon: React.FC<any
   ],
   vendor: [
     { title: 'Dashboard', icon: Home, path: '/' },
-    { title: 'Available Tenders', icon: Briefcase, path: '/available-tenders' },
-    { title: 'My Submissions', icon: Send, path: '/my-submissions' },
-    { title: 'My Disputes', icon: Flag, path: '/disputes' },
+    { title: 'Available', icon: Briefcase, path: '/available-tenders' },
+    { title: 'Submissions', icon: Users, path: '/my-submissions' },
+    { title: 'Disputes', icon: Flag, path: '/disputes' },
   ],
   evaluator: [
     { title: 'Dashboard', icon: Home, path: '/' },
-    { title: 'My Evaluations', icon: ClipboardCheck, path: '/my-evaluations' },
-    { title: 'Completed Evaluations', icon: FileCheck, path: '/completed-evaluations' },
-  ]
+    { title: 'Evaluations', icon: UserCheck, path: '/my-evaluations' },
+    { title: 'Completed', icon: FileCheck, path: '/completed-evaluations' },
+  ],
 };
 
 export function RoleBasedNavigation() {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
-  
-  // If no user, don't render navigation
   if (!user) return null;
-  
-  // Get menu items based on user role
-  const mainMenuItems = menuItemsByRole[user.role] || [];
-  
+
+  const menuItems = MENU_CONFIG[user.role] || [];
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const isSubPathActive = (path: string, subPath: string) => {
-    return location.pathname === subPath;
-  };
-
-  const isPathActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
-  };
-
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-white font-bold">
-            SP
-          </div>
-          <div className="font-semibold text-sidebar-foreground">Smart Procurement</div>
-        </div>
-      </SidebarHeader>
+    <aside className="sticky top-0 w-64 h-screen bg-gray-950 text-white flex flex-col shadow-lg">image.png
+      {/* Header */}
+      <div className="flex items-center h-16 px-6 bg-gray-900">
+        <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center font-bold text-indigo-800">SP</div>
+        <h1 className="ml-3 text-lg font-bold">Procurement</h1>
+      </div>
 
-      <SidebarContent className="overflow-hidden">
-        <SidebarGroup>
-          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  {!item.subItems ? (
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isPathActive(item.path)}
-                    >
-                      <Link to={item.path}>
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  ) : (
-                    <>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isPathActive(item.path)}
-                      >
-                        <Link to={item.path}>
-                          <item.icon className="h-5 w-5" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
+      {/* Navigation */}
+      <nav className="flex-1 px-4 py-5 overflow-y-auto">
+        <p className="text-xs font-semibold uppercase text-indigo-300 mb-4">Main Menu</p>
+        <ul className="space-y-2">
+          {menuItems.map(item => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-5 py-2 mb-2 rounded-full text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-indigo-500 text-white shadow-inner'
+                      : 'text-gray-300 hover:bg-indigo-600 hover:text-white'
+                  }`
+                }
+              >
+                <item.icon className="h-5 w-5" />
+                <span>{item.title}</span>
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-                      {isPathActive(item.path) && (
-                        <SidebarMenuSub>
-                          {item.subItems.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={isSubPathActive(item.path, subItem.path)}
-                              >
-                                <Link to={subItem.path}>
-                                  {subItem.title}
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      )}
-                    </>
-                  )}
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div className="p-4 bg-muted/30 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
-                  {user.avatar || user.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <div>
-                  <div className="font-medium">{user.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter className="p-4">
-        <SidebarMenuButton onClick={handleLogout}>
+      {/* Logout */}
+      <div className="px-4 py-4 border-t border-gray-900">
+        <button
+          onClick={handleLogout}
+          className="flex items-center w-full gap-3 px-4 py-2 rounded-full text-sm font-medium text-gray-300 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors"
+        >
           <LogOut className="h-5 w-5" />
           <span>Logout</span>
-        </SidebarMenuButton>
-      </SidebarFooter>
-    </Sidebar>
+        </button>
+      </div>
+    </aside>
   );
 }

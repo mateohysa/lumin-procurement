@@ -26,6 +26,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { tenderApi } from '@/lib/api-client';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext } from '@/components/ui/pagination';
 
 // Mock tender evaluation results data
 const tenderResults = {
@@ -110,6 +111,10 @@ const Tenders = () => {
   });
   const [showResultsDialog, setShowResultsDialog] = useState(false);
   const [currentTenderId, setCurrentTenderId] = useState<number | null>(null);
+  const [pageAll, setPageAll] = useState(1);
+  const [pageOpen, setPageOpen] = useState(1);
+  const [pageClosed, setPageClosed] = useState(1);
+  const pageSize = 9;
   const navigate = useNavigate();
 
   // Fetch tenders from API
@@ -141,6 +146,18 @@ const Tenders = () => {
     );
   };
 
+  const allList = filteredTendersByStatus('all');
+  const totalPagesAll = Math.ceil(allList.length / pageSize);
+  const displayedAll = allList.slice((pageAll - 1) * pageSize, pageAll * pageSize);
+
+  const openList = filteredTendersByStatus('open');
+  const totalPagesOpen = Math.ceil(openList.length / pageSize);
+  const displayedOpen = openList.slice((pageOpen - 1) * pageSize, pageOpen * pageSize);
+
+  const closedList = filteredTendersByStatus('closed');
+  const totalPagesClosed = Math.ceil(closedList.length / pageSize);
+  const displayedClosed = closedList.slice((pageClosed - 1) * pageSize, pageClosed * pageSize);
+
   const handleShowResults = (tenderId: number) => {
     // Instead of opening dialog, navigate to the submissions page
     navigate(`/tenders/${tenderId}/submissions`);
@@ -168,8 +185,8 @@ const Tenders = () => {
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl">{tender.title}</CardTitle>
-          <Badge variant={tender.status === 'Open' || tender.status === 'draft' ? 'default' : 'secondary'}>
-            {tender.status === 'draft' ? 'Draft' : tender.status}
+          <Badge variant={['open','draft'].includes(tender.status?.toLowerCase() || '') ? 'default' : 'secondary'}>
+            {tender.status?.toLowerCase() === 'draft' ? 'Draft' : tender.status}
           </Badge>
         </div>
       </CardHeader>
@@ -200,7 +217,7 @@ const Tenders = () => {
       </CardContent>
       <CardFooter className="flex justify-between border-t pt-4">
         <div className="flex gap-2">
-          {tender.status === 'Open' || tender.status === 'draft' ? (
+          {['open','draft'].includes(tender.status?.toLowerCase() || '') ? (
             <Button variant="ghost" size="sm" asChild>
               <Link to={`/tenders/${tender._id || tender.id}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
@@ -267,20 +284,71 @@ const Tenders = () => {
             
             <TabsContent value="all" className="mt-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTendersByStatus('all').map(renderTenderCard)}
+                {displayedAll.map(renderTenderCard)}
               </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious disabled={pageAll === 1} onClick={() => setPageAll(pageAll - 1)} />
+                  </PaginationItem>
+                  {Array.from({ length: totalPagesAll }, (_, idx) => (
+                    <PaginationItem key={idx + 1}>
+                      <PaginationLink isActive={pageAll === idx + 1} onClick={() => setPageAll(idx + 1)}>
+                        {idx + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext disabled={pageAll === totalPagesAll} onClick={() => setPageAll(pageAll + 1)} />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </TabsContent>
             
             <TabsContent value="open" className="mt-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTendersByStatus('open').map(renderTenderCard)}
+                {displayedOpen.map(renderTenderCard)}
               </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious disabled={pageOpen === 1} onClick={() => setPageOpen(pageOpen - 1)} />
+                  </PaginationItem>
+                  {Array.from({ length: totalPagesOpen }, (_, idx) => (
+                    <PaginationItem key={idx + 1}>
+                      <PaginationLink isActive={pageOpen === idx + 1} onClick={() => setPageOpen(idx + 1)}>
+                        {idx + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext disabled={pageOpen === totalPagesOpen} onClick={() => setPageOpen(pageOpen + 1)} />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </TabsContent>
             
             <TabsContent value="closed" className="mt-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTendersByStatus('closed').map(renderTenderCard)}
+                {displayedClosed.map(renderTenderCard)}
               </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious disabled={pageClosed === 1} onClick={() => setPageClosed(pageClosed - 1)} />
+                  </PaginationItem>
+                  {Array.from({ length: totalPagesClosed }, (_, idx) => (
+                    <PaginationItem key={idx + 1}>
+                      <PaginationLink isActive={pageClosed === idx + 1} onClick={() => setPageClosed(idx + 1)}>
+                        {idx + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext disabled={pageClosed === totalPagesClosed} onClick={() => setPageClosed(pageClosed + 1)} />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </TabsContent>
           </Tabs>
         )}

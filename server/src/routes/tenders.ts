@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { checkAuthenticated } from '../middleware/checkAuth.js';
 import * as tenderService from '../services/tenderService.js';
@@ -26,7 +26,7 @@ router.post(
     body('evaluationCriteria.*.name').notEmpty().withMessage('Criterion name is required'),
     body('evaluationCriteria.*.weight').isNumeric().withMessage('Criterion weight must be a number'),
   ],
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     console.log(req.body);
     try {
       // Check for validation errors
@@ -36,7 +36,7 @@ router.post(
       }
 
       // Check if user has appropriate role (assuming user info is in req.user)
-      if ( ['procurement_officer','admin'].indexOf(req.user.role) === -1 ) {
+      if ( ['procurement_manager','admin'].indexOf(req.user!.role.toLowerCase()) === -1 ) {
         return res.status(403).json({ message: 'Only procurement officers and admin can create tenders' });
       }
 
@@ -64,7 +64,7 @@ router.post(
       // Add the user ID as the creator and add attachments
       const tenderData = {
         ...req.body,
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
         attachments: attachments.length > 0 ? attachments : undefined,
       };
 
@@ -88,7 +88,7 @@ router.post(
  * @desc    Get all open tenders that vendors can apply to
  * @access  Private (Vendor)
  */
-router.get('/open', checkAuthenticated, async (req, res) => {
+router.get('/open', checkAuthenticated, async (req: Request, res: Response) => {
   try {
     const openTenders = await tenderService.findOpenTenders();
     console.log(`Found ${openTenders.length} open tenders`);
@@ -109,7 +109,7 @@ router.get('/open', checkAuthenticated, async (req, res) => {
  * @desc    Get all tenders with optional filtering
  * @access  Public/Private (depending on filters)
  */
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const options = {
       status: req.query.status as any,
@@ -132,7 +132,7 @@ router.get('/', async (req, res) => {
  * @desc    Get a tender by ID
  * @access  Public
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
     const tender = await tenderService.findTenderById(req.params.id);
     if (!tender) {
@@ -150,11 +150,11 @@ router.get('/:id', async (req, res) => {
  * @desc    Update a tender
  * @access  Private (Procurement Officers only)
  */
-router.put('/:id', checkAuthenticated, async (req, res) => {
+router.put('/:id', checkAuthenticated, async (req: Request, res: Response) => {
   try {
     // Check if user has appropriate role
-    if ( ['procurement_officer','admin'].indexOf(req.user.role) === -1 ) {
-      return res.status(403).json({ message: 'Only procurement officers and admin can create tenders' });
+    if ( ['procurement_manager','admin'].indexOf(req.user!.role) === -1 ) {
+      return res.status(403).json({ message: 'Only procurement officers and admin can update tenders' });
     }
 
     const tender = await tenderService.updateTender(req.params.id, req.body);
@@ -173,11 +173,11 @@ router.put('/:id', checkAuthenticated, async (req, res) => {
  * @desc    Delete a tender
  * @access  Private (Procurement Officers only)
  */
-router.delete('/:id', checkAuthenticated, async (req, res) => {
+router.delete('/:id', checkAuthenticated, async (req: Request, res: Response) => {
   try {
     // Check if user has appropriate role
-    if ( ['procurement_officer','admin'].indexOf(req.user.role) === -1 ) {
-      return res.status(403).json({ message: 'Only procurement officers and admin can create tenders' });
+    if ( ['procurement_manager','admin'].indexOf(req.user!.role.toLowerCase()) === -1 ) {
+      return res.status(403).json({ message: 'Only procurement officers and admin can delete tenders' });
     }
 
     const success = await tenderService.deleteTender(req.params.id);
@@ -200,7 +200,7 @@ router.post(
   '/files',
   checkAuthenticated,
   upload.array('files', 10), // Allow up to 10 files
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       // Process any uploaded files
       const uploadedFiles = [];
@@ -229,6 +229,46 @@ router.post(
     } catch (error) {
       console.error('Error uploading files:', error);
       res.status(500).json({ message: 'Server error during file upload' });
+    }
+  }
+);
+
+/**
+ * @route   GET /api/tenders/for-evaluation
+ * @desc    Get tenders awaiting evaluation by a specific evaluator
+ * @access  Private (Evaluator)
+ */
+router.get('/for-evaluation', checkAuthenticated, async (req: Request, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'Evaluator') {
+      return res.status(403).json({ message: 'Only evaluators can access this resource' });
+    }
+    const tenders = await tenderService.findTendersForEvaluator(req.user!.id);
+    return res.status(200).json(tenders);
+  } catch (error) {
+    console.error('Error in get tenders for evaluator route:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * @route   GET /api/tenders/:id/submissions
+ * @desc    Get submissions for a specific tender
+ * @access  Private (Procurement Officers only)
+ */
+router.get(
+  '/:id/submissions',
+  checkAuthenticated,
+  async (req: Request, res: Response) => {
+    try {
+      // Fetch submissions for the tender
+      const tenderId = req.params.id;
+      const submissions = await tenderService.findSubmissionsByTenderId(tenderId);
+
+      return res.status(200).json(submissions);
+    } catch (error) {
+      console.error('Error fetching tender submissions:', error);
+      return res.status(500).json({ message: 'Server error' });
     }
   }
 );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,59 +14,54 @@ import {
   Users,
   CheckCircle,
   ExternalLink,
-  Flag
+  Flag,
+  Loader2
 } from 'lucide-react';
 import { RoleBasedSubmissionAccess } from '@/components/tenders/RoleBasedSubmissionAccess';
 import { useAuth } from '@/contexts/AuthContext';
 import { DisputeButton } from '@/components/disputes/DisputeButton';
-
-// Mock tender data
-const tenderData = {
-  id: '123',
-  title: 'Office Equipment Procurement',
-  description: 'Seeking a vendor to supply office equipment including computers, printers, and furniture.',
-  category: 'Equipment',
-  status: 'open',
-  deadline: '2025-04-30',
-  endDate: '2025-05-01',
-  budget: '$50,000',
-  organization: 'Ministry of Education',
-  publishDate: '2025-04-01',
-  documents: [
-    { id: 1, name: 'Tender Specification Document', type: 'pdf', size: '2.4 MB' },
-    { id: 2, name: 'Equipment Requirements', type: 'docx', size: '1.8 MB' },
-    { id: 3, name: 'Evaluation Criteria', type: 'pdf', size: '1.1 MB' }
-  ],
-  winner: {
-    id: 'vendor-456',
-    name: 'Office Solutions Inc.',
-    score: 92,
-    submissionDate: '2025-04-15'
-  },
-  disputeTimeFrameDays: 7
-};
+import { tenderApi } from '@/lib/api-client';
 
 const TenderDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
-  
-  // In reality you'd fetch tender details by ID; here we override mock status for open-tender testing
-  const numericId = Number(id);
-  // Treat IDs below 6 as open tenders for mock
-  console.log(tenderData);
-  const isOpenTender = tenderData.status === 'open';
-  const tender = {
-    ...tenderData,
-    status: numericId < 6 ? 'Open' : tenderData.status,
-  };
+  const [tender, setTender] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTender = async () => {
+      try {
+        setLoading(true);
+        const res = await tenderApi.getTenderById(id || '');
+        setTender(res.data);
+      } catch (error) {
+        console.error('Error fetching tender details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTender();
+  }, [id]);
+
+  if (loading || !tender) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  const isOpenTender = tender.status?.toLowerCase() === 'open';
   
   const isAdmin = user?.role === 'admin';
   const isVendor = user?.role === 'vendor';
-  const canSeeWinner = tender.status === 'Awarded';
-  const isWinner = isVendor && user?.id === tender.winner?.id;
+  const canSeeWinner = tender.status === 'awarded';
+  const isWinner = isVendor && user?.id === tender.winner?.toString();
   
   // Check if the current vendor is not the winner (can file a dispute)
-  const canFileDispute = isVendor && user?.id !== tender.winner?.id && tender.status === 'Awarded';
+  const canFileDispute = isVendor && user?.id !== tender.winner?.id && tender.status === 'awarded';
   
   return (
     <MainLayout>
@@ -82,7 +77,7 @@ const TenderDetail = () => {
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <Badge>{tender.status}</Badge>
               <Badge variant="outline">{tender.category}</Badge>
-              <div className="text-sm text-muted-foreground">ID: {tender.id}</div>
+              <div className="text-sm text-muted-foreground">ID: {tender._id}</div>
             </div>
           </div>
           
@@ -124,7 +119,7 @@ const TenderDetail = () => {
                       <Calendar className="h-4 w-4" />
                       <span>Deadline</span>
                     </div>
-                    <div>{tender.deadline}</div>
+                    <div>{new Date(tender.deadline).toLocaleDateString()}</div>
                   </div>
                   
                   <div>
@@ -132,7 +127,7 @@ const TenderDetail = () => {
                       <DollarSign className="h-4 w-4" />
                       <span>Budget</span>
                     </div>
-                    <div>{tender.budget}</div>
+                    <div>{`$${tender.budget.toLocaleString()}`}</div>
                   </div>
                   
                   <div>
@@ -140,7 +135,7 @@ const TenderDetail = () => {
                       <Building className="h-4 w-4" />
                       <span>Organization</span>
                     </div>
-                    <div>{tender.organization}</div>
+                    <div>{tender.organization || tender.createdBy}</div>
                   </div>
                   
                   <div>
@@ -148,7 +143,7 @@ const TenderDetail = () => {
                       <Calendar className="h-4 w-4" />
                       <span>Published</span>
                     </div>
-                    <div>{tender.publishDate}</div>
+                    <div>{new Date(tender.createdAt).toLocaleDateString()}</div>
                   </div>
                 </div>
                 
@@ -157,9 +152,9 @@ const TenderDetail = () => {
                 <div>
                   <h3 className="font-medium mb-2">Tender Documents</h3>
                   <div className="space-y-2">
-                    {tender.documents.map((doc) => (
+                    {tender.documents?.map((doc: any) => (
                       <div 
-                        key={doc.id}
+                        key={doc.fileKey}
                         className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50"
                       >
                         <div className="flex items-center">
