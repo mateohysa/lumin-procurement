@@ -24,8 +24,9 @@ const SubmissionDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [submission, setSubmission] = useState<any>(null);
-  const [aiEvalDesc, setAiEvalDesc] = useState<string>('');
   const [aiScore, setAiScore] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [aiLoaded, setAiLoaded] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   // Track publishing state for winner button
@@ -52,19 +53,6 @@ const SubmissionDetail = () => {
         const overallRank = data.overallRank;
         // Update submission state with mock data
         setSubmission({ ...data, documents, evaluations, averageScore, overallRank });
-        // Fetch AI evaluation for this tender
-        if (data.tender?._id) {
-          const aiRes = await tenderApi.evaluateSubmissions(data.tender._id);
-          const aiDesc = aiRes.data.aiEvaluationDescription || '';
-          const aiSubs = aiRes.data.submissions || [];
-          // find matching submission
-          const aiEntry = aiSubs.find((item: any) => {
-            const doc = item._doc || item;
-            return doc._id === data._id;
-          });
-          setAiEvalDesc(aiDesc);
-          setAiScore(aiEntry?.aiScore || null);
-        }
       } catch (err: any) {
         console.error('Error fetching submission:', err);
         setError(err.message || 'Error fetching submission');
@@ -74,6 +62,26 @@ const SubmissionDetail = () => {
     };
     fetchSubmission();
   }, [id]);
+
+  // Handler to load AI evaluation on-demand
+  const fetchAiEvaluation = async () => {
+    if (!submission?.tender?._id) return;
+    setAiLoading(true);
+    try {
+      const res = await tenderApi.evaluateSubmissions(submission.tender._id);
+      const aiSubs = res.data.submissions || [];
+      const aiEntry = aiSubs.find((item: any) => {
+        const doc = item._doc || item;
+        return doc._id === submission._id;
+      });
+      setAiScore(aiEntry?.aiScore || null);
+      setAiLoaded(true);
+    } catch (err) {
+      console.error('Error fetching AI evaluation:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading submission...</div>;
@@ -179,7 +187,10 @@ const SubmissionDetail = () => {
               <TabsList className="mb-4">
                 <TabsTrigger value="documents">Submission Documents</TabsTrigger>
                 {(isAdmin || user?.role === 'evaluator') && (
-                  <TabsTrigger value="evaluations">Evaluator Scores</TabsTrigger>
+                  <>
+                    <TabsTrigger value="evaluations">Evaluator Scores</TabsTrigger>
+                    <TabsTrigger value="ai">AI Evaluation</TabsTrigger>
+                  </>
                 )}
               </TabsList>
               
@@ -276,24 +287,26 @@ const SubmissionDetail = () => {
                   <Card>
                     <CardHeader>
                       <CardTitle>AI Evaluation</CardTitle>
-                      <CardDescription>{aiEvalDesc}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {aiScore ? (
-                        <div className="space-y-2">
-                          <div className="font-medium">Final Score: {aiScore.final_score.toFixed(2)}</div>
-                          <div className="text-sm">
-                            Subscores:
-                            <ul className="list-disc list-inside ml-4">
-                              {Object.entries(aiScore.subscores).map(([crit, val]) => (
-                                <li key={crit}>{crit}: {val}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground">AI evaluation not available.</p>
-                      )}
+                       {!aiLoaded ? (
+                         <Button variant="outline" size="sm" onClick={fetchAiEvaluation} disabled={aiLoading}>
+                           {aiLoading ? 'Evaluating...' : 'Load AI Evaluation'}
+                         </Button>
+                       ) : aiScore ? (
+                         <div className="space-y-2">
+                           <div className="font-medium">
+                             Final Score: {aiScore.final_score != null ? Number(aiScore.final_score).toFixed(2) : '-'}
+                           </div>
+                           <ul className="list-disc list-inside ml-4 text-sm">
+                             {Object.entries(aiScore.subscores as Record<string, number>).map(([crit, val]) => (
+                               <li key={crit}>{crit}: {val}/10</li>
+                             ))}
+                           </ul>
+                         </div>
+                       ) : (
+                         <p className="text-muted-foreground">AI evaluation not available.</p>
+                       )}
                     </CardContent>
                   </Card>
                 </TabsContent>

@@ -31,27 +31,24 @@ router.get('/:id', checkAuthenticated, async (req: Request, res: Response) => {
     if (submissionObj.tender.status === 'open' && (user.role === 'admin' || user.role === 'evaluator')) {
       return res.status(403).json({ message: 'Not allowed to view this submission while tender is open' });
     }
-    // Prepare mock evaluator scores
+    // Prepare mock evaluator scores on a 1-10 scale per criterion
     const evaluators = submissionObj.tender.assignedEvaluators || [];
     const criteriaNames = ['technical', 'financial', 'experience', 'implementation'];
     const mockEvaluations: any[] = evaluators.map((ev: any, idx: number) => {
       const scores: Record<string, number> = {};
-      // Assign static decreasing mock scores per criteria
+      // Assign mock score (10 - evaluator index, minimum 1)
       criteriaNames.forEach((c) => {
-        const base = { technical: 80, financial: 85, experience: 90, implementation: 95 }[c] || 80;
-        scores[c] = base - idx * 5;
+        scores[c] = Math.max(1, 10 - idx);
       });
-      const totalScore = criteriaNames.reduce((sum, c) => sum + scores[c], 0);
-      const overallScore = totalScore / criteriaNames.length;
+      const overallScore =
+        criteriaNames.reduce((sum, c) => sum + scores[c], 0) / criteriaNames.length;
       return {
         evaluatorId: ev._id,
         evaluatorName: ev.name,
         scores,
-        comments: 'This is a mock evaluator comment.',
-        totalScore,
-        count: criteriaNames.length,
+        comments: `Mock comment by ${ev.name}`,
         overallScore,
-        rank: 0
+        rank: 0,
       };
     });
     // Sort and assign ranks

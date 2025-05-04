@@ -275,44 +275,33 @@ router.get(
       // Fetch submissions for this tender
       const submissions = await tenderService.findSubmissionsByTenderId(tenderId);
 
-      // Map submissions to include submissionDate, mock evaluator scores, averageScore, and computed rank
+      // Map submissions to include submissionDate, evaluator mock scores (1-10 scale), averageScore, and rank
       const criteriaNames = ['technical', 'financial', 'experience', 'implementation'];
       const enriched = submissions.map((s, idx) => {
-        // Convert to plain object
         const obj: any = typeof s.toObject === 'function' ? s.toObject() : { ...s };
         // Map createdAt to submissionDate
         obj.submissionDate = s.createdAt.toISOString();
-        // Build mock evaluations for each assigned evaluator
-        const evaluators: any[] = Array.isArray(tender.assignedEvaluators)
-          ? tender.assignedEvaluators as any[]
-          : [];
+        // Build mock evaluations for each assigned evaluator with 1-10 scale
+        const evaluators: any[] = Array.isArray(tender.assignedEvaluators) ? (tender.assignedEvaluators as any[]) : [];
         const mockEvaluations = evaluators.map((ev, evIdx) => {
           const scores: Record<string, number> = {};
-          // Assign static scores per criteria, varying by submission and evaluator index
+          // Assign mock score (10 - evaluator index) for each criterion, min 1
           criteriaNames.forEach((c) => {
-            const baseMap: Record<string, number> = {
-              technical: 80,
-              financial: 85,
-              experience: 90,
-              implementation: 95,
-            };
-            const base = baseMap[c] || 80;
-            scores[c] = base - evIdx * 5 - idx * 2;
+            const score = Math.max(1, 10 - evIdx);
+            scores[c] = score;
           });
-          const totalScore = Object.values(scores).reduce((sum, v) => sum + v, 0);
+          const totalScore = criteriaNames.reduce((sum, c) => sum + scores[c], 0);
           const overallScore = totalScore / criteriaNames.length;
           return {
             evaluatorId: ev._id,
             evaluatorName: ev.name,
             scores,
-            comments: `Mock comment for submission ${idx + 1} by evaluator ${ev.name}`,
-            totalScore,
+            comments: `Mock comment by ${ev.name}`,
             overallScore,
           };
         });
-        // Attach mock evaluations
+        // Attach mock evaluations and compute averageScore
         obj.evaluations = mockEvaluations;
-        // Compute averageScore from mock evaluations
         obj.averageScore = parseFloat(
           (mockEvaluations.reduce((sum, ev) => sum + ev.overallScore, 0) / (mockEvaluations.length || 1)).toFixed(2)
         );
